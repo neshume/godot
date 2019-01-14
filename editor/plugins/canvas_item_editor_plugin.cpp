@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2018 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2018 Godot Engine contributors (cf. AUTHORS.md)    */
+/* Copyright (c) 2007-2019 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2019 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -2033,16 +2033,19 @@ bool CanvasItemEditor::_gui_input_select(const Ref<InputEvent> &p_event) {
 
 			// Find the item to select
 			CanvasItem *canvas_item = NULL;
-			Vector<_SelectResult> selection;
-
-			// Retrieve the items
-			_get_canvas_items_at_pos(click, selection);
 
 			// Retrieve the bones
+			Vector<_SelectResult> selection = Vector<_SelectResult>();
 			_get_bones_at_pos(click, selection);
-
 			if (!selection.empty()) {
 				canvas_item = selection[0].item;
+			} else {
+				// Retrieve the canvas items
+				selection = Vector<_SelectResult>();
+				_get_canvas_items_at_pos(click, selection);
+				if (!selection.empty()) {
+					canvas_item = selection[0].item;
+				}
 			}
 
 			if (!canvas_item) {

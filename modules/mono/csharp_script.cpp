@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2018 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2018 Godot Engine contributors (cf. AUTHORS.md)    */
+/* Copyright (c) 2007-2019 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2019 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -783,7 +783,7 @@ void CSharpLanguage::reload_assemblies(bool p_soft_reload) {
 
 				// Even though build didn't fail, this tells the placeholder to keep properties and
 				// it allows using property_set_fallback for restoring the state without a valid script.
-				placeholder->set_build_failed(true);
+				scr->placeholder_fallback_enabled = true;
 
 				// Restore Variant properties state, it will be kept by the placeholder until the next script reloading
 				for (List<Pair<StringName, Variant> >::Element *G = scr->pending_reload_state[obj_id].properties.front(); G; G = G->next()) {
@@ -1830,12 +1830,10 @@ void CSharpScript::_update_exports_values(Map<StringName, Variant> &values, List
 bool CSharpScript::_update_exports() {
 
 #ifdef TOOLS_ENABLED
-	if (!valid) {
-		for (Set<PlaceHolderScriptInstance *>::Element *E = placeholders.front(); E; E = E->next()) {
-			E->get()->set_build_failed(true);
-		}
+	placeholder_fallback_enabled = true; // until proven otherwise
+
+	if (!valid)
 		return false;
-	}
 
 	bool changed = false;
 
@@ -1944,6 +1942,8 @@ bool CSharpScript::_update_exports() {
 		tmp_object = NULL;
 	}
 
+	placeholder_fallback_enabled = false;
+
 	if (placeholders.size()) {
 		// Update placeholders if any
 		Map<StringName, Variant> values;
@@ -1951,7 +1951,6 @@ bool CSharpScript::_update_exports() {
 		_update_exports_values(values, propnames);
 
 		for (Set<PlaceHolderScriptInstance *>::Element *E = placeholders.front(); E; E = E->next()) {
-			E->get()->set_build_failed(false);
 			E->get()->update(propnames, values);
 		}
 	}
@@ -2697,6 +2696,7 @@ CSharpScript::CSharpScript() :
 
 #ifdef TOOLS_ENABLED
 	source_changed_cache = false;
+	placeholder_fallback_enabled = false;
 	exports_invalidated = true;
 #endif
 

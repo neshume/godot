@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2018 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2018 Godot Engine contributors (cf. AUTHORS.md)    */
+/* Copyright (c) 2007-2019 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2019 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -243,7 +243,26 @@ Error OS_X11::initialize(const VideoMode &p_desired, int p_video_driver, int p_a
 	// Set DRI_PRIME if not set. This means that Godot should default to a higher-power GPU if it exists.
 	// Note: Due to the final '0' parameter to setenv any existing DRI_PRIME environment variables will not
 	// be overwritten.
-	setenv("DRI_PRIME", "1", 0);
+	bool enable_dri_prime = true;
+	// Check if Nouveau is loaded, we don't want to force dGPU usage with that driver.
+	if (FileAccess *f = FileAccess::open("/proc/modules", FileAccess::READ)) {
+		// Match driver name + space
+		String nouveau_str = "nouveau ";
+
+		while (!f->eof_reached()) {
+			String line = f->get_line();
+
+			if (line.begins_with(nouveau_str)) {
+				enable_dri_prime = false;
+				break;
+			}
+		}
+		f->close();
+		memdelete(f);
+	}
+	if (enable_dri_prime) {
+		setenv("DRI_PRIME", "1", 0);
+	}
 
 	ContextGL_X11::ContextType opengl_api_type = ContextGL_X11::GLES_3_0_COMPATIBLE;
 

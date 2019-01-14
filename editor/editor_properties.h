@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2018 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2018 Godot Engine contributors (cf. AUTHORS.md)    */
+/* Copyright (c) 2007-2019 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2019 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -499,6 +499,7 @@ class EditorPropertyNodePath : public EditorProperty {
 	Button *clear;
 	SceneTreeDialog *scene_tree;
 	NodePath base_hint;
+	bool use_path_from_scene_root;
 
 	Vector<StringName> valid_types;
 	void _node_selected(const NodePath &p_path);
@@ -511,8 +512,17 @@ protected:
 
 public:
 	virtual void update_property();
-	void setup(const NodePath &p_base_hint, Vector<StringName> p_valid_types);
+	void setup(const NodePath &p_base_hint, Vector<StringName> p_valid_types, bool p_use_path_from_scene_root = true);
 	EditorPropertyNodePath();
+};
+
+class EditorPropertyRID : public EditorProperty {
+	GDCLASS(EditorPropertyRID, EditorProperty)
+	Label *label;
+
+public:
+	virtual void update_property();
+	EditorPropertyRID();
 };
 
 class EditorPropertyResource : public EditorProperty {

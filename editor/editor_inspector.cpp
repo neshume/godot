@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2018 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2018 Godot Engine contributors (cf. AUTHORS.md)    */
+/* Copyright (c) 2007-2019 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2019 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -1941,10 +1941,6 @@ void EditorInspector::_edit_set(const String &p_name, const Variant &p_value, bo
 
 		Resource *r = Object::cast_to<Resource>(object);
 		if (r) {
-			if (!r->is_edited() && String(p_name) != "resource/edited") {
-				undo_redo->add_do_method(r, "set_edited", true);
-				undo_redo->add_undo_method(r, "set_edited", false);
-			}
 
 			if (String(p_name) == "resource_local_to_scene") {
 				bool prev = object->get(p_name);
