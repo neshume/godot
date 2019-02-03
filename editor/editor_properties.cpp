@@ -2187,7 +2187,19 @@ void EditorPropertyResource::_menu_option(int p_which) {
 				return;
 			}
 
-			Object *obj = ClassDB::instance(intype);
+			Object *obj = NULL;
+
+			if (ScriptServer::is_global_class(intype)) {
+				obj = ClassDB::instance(ScriptServer::get_global_class_base(intype));
+				if (obj) {
+					Ref<Script> script = ResourceLoader::load(ScriptServer::get_global_class_path(intype));
+					if (script.is_valid()) {
+						obj->set_script(Variant(script));
+					}
+				}
+			} else {
+				obj = ClassDB::instance(intype);
+			}
 
 			if (!obj) {
 				obj = EditorNode::get_editor_data().instance_custom_type(intype, "Resource");
@@ -2448,7 +2460,7 @@ void EditorPropertyResource::update_property() {
 				sub_inspector->set_enable_v_scroll(false);
 				sub_inspector->set_use_doc_hints(true);
 
-				sub_inspector->set_use_sub_inspector_bg(true);
+				sub_inspector->set_sub_inspector(true);
 				sub_inspector->set_enable_capitalize_paths(true);
 
 				sub_inspector->connect("property_keyed", this, "_sub_inspector_property_keyed");

@@ -30,6 +30,9 @@
 
 #include "mono_bottom_panel.h"
 
+#include "editor/plugins/script_editor_plugin.h"
+#include "editor/script_editor_debugger.h"
+
 #include "../csharp_script.h"
 #include "../godotsharp_dirs.h"
 #include "csharp_project.h"
@@ -160,7 +163,12 @@ void MonoBottomPanel::_build_project_pressed() {
 	bool build_success = GodotSharpBuilds::get_singleton()->build_project_blocking("Tools");
 
 	if (build_success) {
+		// Notify running game for hot-reload
+		ScriptEditor::get_singleton()->get_debugger()->reload_scripts();
+
+		// Hot-reload in the editor
 		MonoReloadNode::get_singleton()->restart_reload_timer();
+
 		if (CSharpLanguage::get_singleton()->is_assembly_reloading_needed()) {
 			CSharpLanguage::get_singleton()->reload_assemblies(false);
 		}
@@ -179,7 +187,7 @@ void MonoBottomPanel::_view_log_pressed() {
 
 		String log_dirpath = build_tab->get_build_info().get_log_dirpath();
 
-		OS::get_singleton()->shell_open(log_dirpath.plus_file("msbuild_log.txt"));
+		OS::get_singleton()->shell_open(log_dirpath.plus_file(GodotSharpBuilds::get_msbuild_log_filename()));
 	}
 }
 
@@ -413,7 +421,7 @@ void MonoBuildTab::on_build_exit(BuildResult result) {
 	build_exited = true;
 	build_result = result;
 
-	_load_issues_from_file(logs_dir.plus_file("msbuild_issues.csv"));
+	_load_issues_from_file(logs_dir.plus_file(GodotSharpBuilds::get_msbuild_issues_filename()));
 	_update_issues_list();
 
 	MonoBottomPanel::get_singleton()->raise_build_tab(this);

@@ -80,6 +80,8 @@ public:
 		bool use_rgba_2d_shadows;
 
 		bool support_32_bits_indices;
+		bool support_write_depth;
+		bool support_half_float_vertices;
 	} config;
 
 	struct Resources {
@@ -340,6 +342,7 @@ public:
 	virtual void textures_keep_original(bool p_enable);
 
 	virtual void texture_set_proxy(RID p_texture, RID p_proxy);
+	virtual Size2 texture_size_with_proxy(RID p_texture) const;
 
 	virtual void texture_set_detect_3d_callback(RID p_texture, VisualServer::TextureDetectCallback p_callback, void *p_userdata);
 	virtual void texture_set_detect_srgb_callback(RID p_texture, VisualServer::TextureDetectCallback p_callback, void *p_userdata);

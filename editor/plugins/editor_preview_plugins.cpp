@@ -99,12 +99,14 @@ Ref<Texture> EditorTexturePreviewPlugin::generate(const RES &p_from, const Size2
 	} else {
 		Ref<Texture> tex = p_from;
 		img = tex->get_data();
+		if (img.is_valid()) {
+			img = img->duplicate();
+		}
 	}
 
 	if (img.is_null() || img->empty())
 		return Ref<Texture>();
 
-	img = img->duplicate();
 	img->clear_mipmaps();
 
 	if (img->is_compressed()) {
@@ -332,7 +334,7 @@ Ref<Texture> EditorMaterialPreviewPlugin::generate(const RES &p_from, const Size
 			OS::get_singleton()->delay_usec(10);
 		}
 
-		Ref<Image> img = VS::get_singleton()->VS::get_singleton()->texture_get_data(viewport_texture);
+		Ref<Image> img = VS::get_singleton()->texture_get_data(viewport_texture);
 		VS::get_singleton()->mesh_surface_set_material(sphere, 0, RID());
 
 		ERR_FAIL_COND_V(!img.is_valid(), Ref<ImageTexture>());
@@ -732,7 +734,7 @@ Ref<Texture> EditorMeshPreviewPlugin::generate(const RES &p_from, const Size2 p_
 		OS::get_singleton()->delay_usec(10);
 	}
 
-	Ref<Image> img = VS::get_singleton()->VS::get_singleton()->texture_get_data(viewport_texture);
+	Ref<Image> img = VS::get_singleton()->texture_get_data(viewport_texture);
 	ERR_FAIL_COND_V(img.is_null(), Ref<ImageTexture>());
 
 	VS::get_singleton()->instance_set_base(mesh_instance, RID());
@@ -852,7 +854,7 @@ Ref<Texture> EditorFontPreviewPlugin::generate_from_path(const String &p_path, c
 		OS::get_singleton()->delay_usec(10);
 	}
 
-	Ref<Image> img = VS::get_singleton()->VS::get_singleton()->texture_get_data(viewport_texture);
+	Ref<Image> img = VS::get_singleton()->texture_get_data(viewport_texture);
 	ERR_FAIL_COND_V(img.is_null(), Ref<ImageTexture>());
 
 	img->convert(Image::FORMAT_RGBA8);

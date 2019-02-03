@@ -82,10 +82,7 @@ class CSharpScript : public Script {
 
 	Set<Object *> instances;
 
-#ifdef DEBUG_ENABLED
-	Set<ObjectID> pending_reload_instances;
-#endif
-
+#ifdef GD_MONO_HOT_RELOAD
 	struct StateBackup {
 		// TODO
 		// Replace with buffer containing the serialized state of managed scripts.
@@ -93,8 +90,8 @@ class CSharpScript : public Script {
 		List<Pair<StringName, Variant> > properties;
 	};
 
-#ifdef TOOLS_ENABLED
-	Map<ObjectID, CSharpScript::StateBackup> pending_reload_state;
+	Set<ObjectID> pending_reload_instances;
+	Map<ObjectID, StateBackup> pending_reload_state;
 #endif
 
 	String source;
@@ -130,7 +127,7 @@ class CSharpScript : public Script {
 
 	bool _update_exports();
 #ifdef TOOLS_ENABLED
-	bool _get_member_export(GDMonoClass *p_class, GDMonoClassMember *p_member, PropertyInfo &r_prop_info, bool &r_exported);
+	bool _get_member_export(GDMonoClass *p_class, IMonoClassMember *p_member, PropertyInfo &r_prop_info, bool &r_exported);
 #endif
 
 	CSharpInstance *_create_instance(const Variant **p_args, int p_argcount, Object *p_owner, bool p_isref, Variant::CallError &r_error);
@@ -209,8 +206,15 @@ class CSharpInstance : public ScriptInstance {
 	Ref<MonoGCHandle> gchandle;
 
 	bool _reference_owner_unsafe();
+
+	/*
+	 * If true is returned, the caller must memdelete the script instance's owner.
+	 */
 	bool _unreference_owner_unsafe();
 
+	/*
+	 * If NULL is returned, the caller must destroy the script instance by removing it from its owner.
+	 */
 	MonoObject *_internal_new_managed();
 
 	// Do not use unless you know what you are doing
@@ -219,12 +223,14 @@ class CSharpInstance : public ScriptInstance {
 
 	void _call_multilevel(MonoObject *p_mono_object, const StringName &p_method, const Variant **p_args, int p_argcount);
 
-	MultiplayerAPI::RPCMode _member_get_rpc_mode(GDMonoClassMember *p_member) const;
+	MultiplayerAPI::RPCMode _member_get_rpc_mode(IMonoClassMember *p_member) const;
 
 public:
 	MonoObject *get_mono_object() const;
 
 	_FORCE_INLINE_ bool is_destructing_script_instance() { return destructing_script_instance; }
+
+	virtual Object *get_owner();
 
 	virtual bool set(const StringName &p_name, const Variant &p_value);
 	virtual bool get(const StringName &p_name, Variant &r_ret) const;
@@ -238,7 +244,12 @@ public:
 	virtual void call_multilevel_reversed(const StringName &p_method, const Variant **p_args, int p_argcount);
 
 	void mono_object_disposed(MonoObject *p_obj);
-	void mono_object_disposed_baseref(MonoObject *p_obj, bool p_is_finalizer, bool &r_owner_deleted);
+
+	/*
+	 * If 'r_delete_owner' is set to true, the caller must memdelete the script instance's owner. Otherwise, if
+	 * 'r_remove_script_instance' is set to true, the caller must destroy the script instance by removing it from its owner.
+	 */
+	void mono_object_disposed_baseref(MonoObject *p_obj, bool p_is_finalizer, bool &r_delete_owner, bool &r_remove_script_instance);
 
 	virtual void refcount_incremented();
 	virtual bool refcount_decremented();
@@ -258,6 +269,7 @@ public:
 };
 
 struct CSharpScriptBinding {
+	bool inited;
 	StringName type_name;
 	GDMonoClass *wrapper_class;
 	Ref<MonoGCHandle> gchandle;
@@ -313,7 +325,7 @@ public:
 	bool debug_break(const String &p_error, bool p_allow_continue = true);
 	bool debug_break_parse(const String &p_file, int p_line, const String &p_error);
 
-#ifdef TOOLS_ENABLED
+#ifdef GD_MONO_HOT_RELOAD
 	bool is_assembly_reloading_needed();
 	void reload_assemblies(bool p_soft_reload);
 #endif
@@ -393,6 +405,8 @@ public:
 	virtual void free_instance_binding_data(void *p_data);
 	virtual void refcount_incremented_instance_binding(Object *p_object);
 	virtual bool refcount_decremented_instance_binding(Object *p_object);
+
+	bool setup_csharp_script_binding(CSharpScriptBinding &r_script_binding, Object *p_object);
 
 #ifdef DEBUG_ENABLED
 	Vector<StackInfo> stack_trace_get_info(MonoObject *p_stack_trace);
