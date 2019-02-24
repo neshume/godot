@@ -219,15 +219,15 @@ public:
 
 	static _ALWAYS_INLINE_ int wrapi(int value, int min, int max) {
 		int rng = max - min;
-		return min + ((((value - min) % rng) + rng) % rng);
+		return (rng != 0) ? min + ((((value - min) % rng) + rng) % rng) : min;
 	}
 	static _ALWAYS_INLINE_ double wrapf(double value, double min, double max) {
 		double rng = max - min;
-		return value - (rng * Math::floor((value - min) / rng));
+		return (!is_equal_approx(rng, 0.0)) ? value - (rng * Math::floor((value - min) / rng)) : min;
 	}
 	static _ALWAYS_INLINE_ float wrapf(float value, float min, float max) {
 		float rng = max - min;
-		return value - (rng * Math::floor((value - min) / rng));
+		return (!is_equal_approx(rng, 0.0f)) ? value - (rng * Math::floor((value - min) / rng)) : min;
 	}
 
 	// double only, as these functions are mainly used by the editor and not performance-critical,
@@ -242,8 +242,8 @@ public:
 	static void randomize();
 	static uint32_t rand_from_seed(uint64_t *seed);
 	static uint32_t rand();
-	static _ALWAYS_INLINE_ double randf() { return (double)rand() / (double)Math::RANDOM_MAX; }
-	static _ALWAYS_INLINE_ float randd() { return (float)rand() / (float)Math::RANDOM_MAX; }
+	static _ALWAYS_INLINE_ double randd() { return (double)rand() / (double)Math::RANDOM_MAX; }
+	static _ALWAYS_INLINE_ float randf() { return (float)rand() / (float)Math::RANDOM_MAX; }
 
 	static double random(double from, double to);
 	static float random(float from, float to);

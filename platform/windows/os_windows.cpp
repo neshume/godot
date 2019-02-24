@@ -43,15 +43,16 @@
 #include "drivers/windows/rw_lock_windows.h"
 #include "drivers/windows/semaphore_windows.h"
 #include "drivers/windows/thread_windows.h"
-#include "joypad.h"
+#include "joypad_windows.h"
 #include "lang_table.h"
 #include "main/main.h"
 #include "servers/audio_server.h"
 #include "servers/visual/visual_server_raster.h"
 #include "servers/visual/visual_server_wrap_mt.h"
 #include "windows_terminal_logger.h"
-#include <avrt.h>
 
+#include <avrt.h>
+#include <direct.h>
 #include <process.h>
 #include <regstr.h>
 #include <shlobj.h>
@@ -1273,7 +1274,7 @@ Error OS_Windows::initialize(const VideoMode &p_desired, int p_video_driver, int
 
 	gl_context = NULL;
 	while (!gl_context) {
-		gl_context = memnew(ContextGL_Win(hWnd, gles3_context));
+		gl_context = memnew(ContextGL_Windows(hWnd, gles3_context));
 
 		if (gl_context->initialize() != OK) {
 			memdelete(gl_context);
@@ -2137,7 +2138,9 @@ OS::TimeZoneInfo OS_Windows::get_time_zone_info() const {
 		ret.name = info.StandardName;
 	}
 
-	ret.bias = info.Bias;
+	// Bias value returned by GetTimeZoneInformation is inverted of what we expect
+	// For example on GMT-3 GetTimeZoneInformation return a Bias of 180, so invert the value to get -180
+	ret.bias = -info.Bias;
 	return ret;
 }
 
@@ -3018,9 +3021,6 @@ OS_Windows::OS_Windows(HINSTANCE _hInstance) {
 
 #ifdef WASAPI_ENABLED
 	AudioDriverManager::add_driver(&driver_wasapi);
-#endif
-#ifdef RTAUDIO_ENABLED
-	AudioDriverManager::add_driver(&driver_rtaudio);
 #endif
 #ifdef XAUDIO2_ENABLED
 	AudioDriverManager::add_driver(&driver_xaudio2);

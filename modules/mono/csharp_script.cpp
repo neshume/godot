@@ -719,13 +719,13 @@ void CSharpLanguage::reload_assemblies(bool p_soft_reload) {
 		// Script::instances are deleted during managed object disposal, which happens on domain finalize.
 		// Only placeholders are kept. Therefore we need to keep a copy before that happens.
 
-		for (Set<Object *>::Element *E = script->instances.front(); E; E = E->next()) {
-			script->pending_reload_instances.insert(E->get()->get_instance_id());
+		for (Set<Object *>::Element *F = script->instances.front(); F; F = F->next()) {
+			script->pending_reload_instances.insert(F->get()->get_instance_id());
 		}
 
 #ifdef TOOLS_ENABLED
-		for (Set<PlaceHolderScriptInstance *>::Element *E = script->placeholders.front(); E; E = E->next()) {
-			script->pending_reload_instances.insert(E->get()->get_owner()->get_instance_id());
+		for (Set<PlaceHolderScriptInstance *>::Element *F = script->placeholders.front(); F; F = F->next()) {
+			script->pending_reload_instances.insert(F->get()->get_owner()->get_instance_id());
 		}
 #endif
 
@@ -1113,19 +1113,23 @@ bool CSharpLanguage::setup_csharp_script_binding(CSharpScriptBinding &r_script_b
 
 void *CSharpLanguage::alloc_instance_binding_data(Object *p_object) {
 
+	SCOPED_MUTEX_LOCK(language_bind_mutex);
+
+	Map<Object *, CSharpScriptBinding>::Element *match = script_bindings.find(p_object);
+	if (match)
+		return (void *)match;
+
 	CSharpScriptBinding script_binding;
 
 	if (!setup_csharp_script_binding(script_binding, p_object))
 		return NULL;
 
-	void *data;
+	return (void *)insert_script_binding(p_object, script_binding);
+}
 
-	{
-		SCOPED_MUTEX_LOCK(language_bind_mutex);
-		data = (void *)script_bindings.insert(p_object, script_binding);
-	}
+Map<Object *, CSharpScriptBinding>::Element *CSharpLanguage::insert_script_binding(Object *p_object, const CSharpScriptBinding &p_script_binding) {
 
-	return data;
+	return script_bindings.insert(p_object, p_script_binding);
 }
 
 void CSharpLanguage::free_instance_binding_data(void *p_data) {
@@ -2279,17 +2283,18 @@ void CSharpScript::_bind_methods() {
 	ClassDB::bind_vararg_method(METHOD_FLAGS_DEFAULT, "new", &CSharpScript::_new, MethodInfo(Variant::OBJECT, "new"));
 }
 
-Ref<CSharpScript> CSharpScript::create_for_managed_type(GDMonoClass *p_class) {
+Ref<CSharpScript> CSharpScript::create_for_managed_type(GDMonoClass *p_class, GDMonoClass *p_native) {
 
 	// This method should not fail
 
 	CRASH_COND(!p_class);
 
+	// TODO: Cache the 'CSharpScript' associated with this 'p_class' instead of allocating a new one every time
 	Ref<CSharpScript> script = memnew(CSharpScript);
 
 	script->name = p_class->get_name();
 	script->script_class = p_class;
-	script->native = GDMonoUtils::get_class_native_base(script->script_class);
+	script->native = p_native;
 
 	CRASH_COND(script->native == NULL);
 

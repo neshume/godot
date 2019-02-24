@@ -326,7 +326,6 @@ void EditorNode::_notification(int p_what) {
 		gui_base->set_theme(theme);
 
 		gui_base->add_style_override("panel", gui_base->get_stylebox("Background", "EditorStyles"));
-		play_button_panel->add_style_override("panel", gui_base->get_stylebox("PlayButtonPanel", "EditorStyles"));
 		scene_root_parent->add_style_override("panel", gui_base->get_stylebox("Content", "EditorStyles"));
 		bottom_panel->add_style_override("panel", gui_base->get_stylebox("panel", "TabContainer"));
 		scene_tabs->add_style_override("tab_fg", gui_base->get_stylebox("SceneTabFG", "EditorStyles"));
@@ -881,9 +880,9 @@ bool EditorNode::_find_and_save_edited_subresources(Object *obj, Map<RES, bool> 
 				Dictionary d = obj->get(E->get().name);
 				List<Variant> keys;
 				d.get_key_list(&keys);
-				for (List<Variant>::Element *E = keys.front(); E; E = E->next()) {
+				for (List<Variant>::Element *F = keys.front(); F; F = F->next()) {
 
-					Variant v = d[E->get()];
+					Variant v = d[F->get()];
 					RES res = v;
 					if (_find_and_save_resource(res, processed, flags))
 						ret_changed = true;
@@ -1371,6 +1370,9 @@ bool EditorNode::item_has_editor(Object *p_object) {
 	return editor_data.get_subeditors(p_object).size() > 0;
 }
 
+void EditorNode::edit_item_resource(RES p_resource) {
+	edit_item(p_resource.ptr());
+}
 void EditorNode::edit_item(Object *p_object) {
 
 	Vector<EditorPlugin *> sub_plugins;
@@ -2580,6 +2582,20 @@ void EditorNode::set_addon_plugin_enabled(const String &p_addon, bool p_enabled,
 	Ref<ConfigFile> cf;
 	cf.instance();
 	String addon_path = "res://addons/" + p_addon + "/plugin.cfg";
+	if (!DirAccess::exists(addon_path.get_base_dir())) {
+		ProjectSettings *ps = ProjectSettings::get_singleton();
+		PoolStringArray enabled_plugins = ps->get("editor_plugins/enabled");
+		for (int i = 0; i < enabled_plugins.size(); ++i) {
+			if (enabled_plugins.get(i) == p_addon) {
+				enabled_plugins.remove(i);
+				break;
+			}
+		}
+		ps->set("editor_plugins/enabled", enabled_plugins);
+		ps->save();
+		WARN_PRINTS("Addon '" + p_addon + "' failed to load. No directory found. Removing from enabled plugins.");
+		return;
+	}
 	Error err = cf->load(addon_path);
 	if (err != OK) {
 		show_warning(vformat(TTR("Unable to enable addon plugin at: '%s' parsing of config failed."), addon_path));
@@ -2972,6 +2988,7 @@ Error EditorNode::load_scene(const String &p_scene, bool p_ignore_broken_deps, b
 
 	prev_scene->set_disabled(previous_scenes.size() == 0);
 	opening_prev = false;
+	scene_tree_dock->set_selected(new_scene);
 
 	ScriptEditor::get_singleton()->get_debugger()->update_live_edit_root();
 
@@ -4405,7 +4422,7 @@ void EditorNode::remove_tool_menu_item(const String &p_name) {
 
 void EditorNode::_dropped_files(const Vector<String> &p_files, int p_screen) {
 
-	String to_path = ProjectSettings::get_singleton()->globalize_path(get_filesystem_dock()->get_current_path());
+	String to_path = ProjectSettings::get_singleton()->globalize_path(get_filesystem_dock()->get_selected_path());
 	DirAccessRef dir = DirAccess::create(DirAccess::ACCESS_FILESYSTEM);
 
 	Vector<String> just_copy = String("ttf,otf").split(",");
@@ -4716,6 +4733,7 @@ void EditorNode::_bind_methods() {
 	ClassDB::bind_method("_clear_undo_history", &EditorNode::_clear_undo_history);
 	ClassDB::bind_method("_dropped_files", &EditorNode::_dropped_files);
 	ClassDB::bind_method("_toggle_distraction_free_mode", &EditorNode::_toggle_distraction_free_mode);
+	ClassDB::bind_method("edit_item_resource", &EditorNode::edit_item_resource);
 
 	ClassDB::bind_method(D_METHOD("get_gui_base"), &EditorNode::get_gui_base);
 	ClassDB::bind_method(D_METHOD("_bottom_panel_switch"), &EditorNode::_bottom_panel_switch);
@@ -4766,8 +4784,6 @@ EditorNode::EditorNode() {
 	SceneState::set_disable_placeholders(true);
 	ResourceLoader::clear_translation_remaps(); //no remaps using during editor
 	ResourceLoader::clear_path_remaps();
-
-	ImageTexture::set_keep_images_cached(true);
 
 	InputDefault *id = Object::cast_to<InputDefault>(Input::get_singleton());
 
@@ -4886,9 +4902,9 @@ EditorNode::EditorNode() {
 			import_collada.instance();
 			import_scene->add_importer(import_collada);
 
-			Ref<EditorOBJImporter> import_obj;
-			import_obj.instance();
-			import_scene->add_importer(import_obj);
+			Ref<EditorOBJImporter> import_obj2;
+			import_obj2.instance();
+			import_scene->add_importer(import_obj2);
 
 			Ref<EditorSceneImporterGLTF> import_gltf;
 			import_gltf.instance();
@@ -4990,7 +5006,7 @@ EditorNode::EditorNode() {
 	main_vbox = memnew(VBoxContainer);
 	gui_base->add_child(main_vbox);
 	main_vbox->set_anchors_and_margins_preset(Control::PRESET_WIDE, Control::PRESET_MODE_MINSIZE, 8);
-	main_vbox->set_margin(MARGIN_TOP, 5 * EDSCALE);
+	main_vbox->add_constant_override("separation", 8 * EDSCALE);
 
 	menu_hb = memnew(HBoxContainer);
 	main_vbox->add_child(menu_hb);
@@ -5202,11 +5218,8 @@ EditorNode::EditorNode() {
 	viewport->add_constant_override("separation", 0);
 	scene_root_parent->add_child(viewport);
 
-	PanelContainer *top_region = memnew(PanelContainer);
-	top_region->add_style_override("panel", gui_base->get_stylebox("MenuPanel", "EditorStyles"));
 	HBoxContainer *left_menu_hb = memnew(HBoxContainer);
-	top_region->add_child(left_menu_hb);
-	menu_hb->add_child(top_region);
+	menu_hb->add_child(left_menu_hb);
 
 	file_menu = memnew(MenuButton);
 	file_menu->set_flat(false);
@@ -5336,11 +5349,10 @@ EditorNode::EditorNode() {
 	p->add_item(TTR("Quit to Project List"), RUN_PROJECT_MANAGER, KEY_MASK_SHIFT + KEY_MASK_CMD + KEY_Q);
 #endif
 
-	PanelContainer *editor_region = memnew(PanelContainer);
-	main_editor_button_vb = memnew(HBoxContainer);
-	editor_region->add_child(main_editor_button_vb);
 	menu_hb->add_spacer();
-	menu_hb->add_child(editor_region);
+
+	main_editor_button_vb = memnew(HBoxContainer);
+	menu_hb->add_child(main_editor_button_vb);
 
 	debug_menu = memnew(MenuButton);
 	debug_menu->set_flat(false);
@@ -5429,11 +5441,8 @@ EditorNode::EditorNode() {
 	p->add_separator();
 	p->add_icon_item(gui_base->get_icon("Godot", "EditorIcons"), TTR("About"), HELP_ABOUT);
 
-	play_button_panel = memnew(PanelContainer);
-	menu_hb->add_child(play_button_panel);
-
 	HBoxContainer *play_hb = memnew(HBoxContainer);
-	play_button_panel->add_child(play_hb);
+	menu_hb->add_child(play_hb);
 
 	play_button = memnew(ToolButton);
 	play_hb->add_child(play_button);
@@ -5511,7 +5520,6 @@ EditorNode::EditorNode() {
 	video_driver = memnew(OptionButton);
 	video_driver->set_flat(true);
 	video_driver->set_focus_mode(Control::FOCUS_NONE);
-	video_driver->set_v_size_flags(Control::SIZE_SHRINK_CENTER);
 	video_driver->connect("item_selected", this, "_video_driver_selected");
 	video_driver->add_font_override("font", gui_base->get_font("bold", "EditorFonts"));
 	right_menu_hb->add_child(video_driver);
@@ -5547,7 +5555,7 @@ EditorNode::EditorNode() {
 	layout_dialog->connect("name_confirmed", this, "_dialog_action");
 
 	update_menu = memnew(MenuButton);
-	update_menu->set_tooltip(TTR("Spins when the editor window repaints!"));
+	update_menu->set_tooltip(TTR("Spins when the editor window redraws."));
 	right_menu_hb->add_child(update_menu);
 	update_menu->set_icon(gui_base->get_icon("Progress1", "EditorIcons"));
 	update_menu->get_popup()->connect("id_pressed", this, "_menu_option");
