@@ -2082,7 +2082,7 @@ GDScriptParser::PatternNode *GDScriptParser::_parse_pattern(bool p_static) {
 				return NULL;
 			}
 			pattern->pt_type = GDScriptParser::PatternNode::PT_BIND;
-			pattern->bind = tokenizer->get_token_identifier();
+			pattern->bind = tokenizer->get_token_literal();
 			// Check if variable name is already used
 			BlockNode *bl = current_block;
 			while (bl) {
@@ -4691,6 +4691,16 @@ void GDScriptParser::_parse_class(ClassNode *p_class) {
 
 						ConstantNode *cn = static_cast<ConstantNode *>(subexpr);
 						if (cn->value.get_type() != Variant::NIL) {
+							if (member._export.type != Variant::NIL && cn->value.get_type() != member._export.type) {
+								if (Variant::can_convert(cn->value.get_type(), member._export.type)) {
+									Variant::CallError err;
+									const Variant *args = &cn->value;
+									cn->value = Variant::construct(member._export.type, &args, 1, err);
+								} else {
+									_set_error("Cannot convert the provided value to the export type.");
+									return;
+								}
+							}
 							member.default_value = cn->value;
 						}
 					}
@@ -7458,7 +7468,8 @@ void GDScriptParser::_check_class_level_types(ClassNode *p_class) {
 				found_setter = true;
 				FunctionNode *setter = p_class->functions[j];
 
-				if (setter->arguments.size() != 1) {
+				if (setter->get_required_argument_count() != 1 &&
+						!(setter->get_required_argument_count() == 0 && setter->default_values.size() > 0)) {
 					_set_error("Setter function needs to receive exactly 1 argument. See '" + setter->name +
 									   "()' definition at line " + itos(setter->line) + ".",
 							v.line);
@@ -7477,7 +7488,7 @@ void GDScriptParser::_check_class_level_types(ClassNode *p_class) {
 				found_getter = true;
 				FunctionNode *getter = p_class->functions[j];
 
-				if (getter->arguments.size() != 0) {
+				if (getter->get_required_argument_count() != 0) {
 					_set_error("Getter function can't receive arguments. See '" + getter->name +
 									   "()' definition at line " + itos(getter->line) + ".",
 							v.line);
@@ -7831,13 +7842,16 @@ void GDScriptParser::_check_block_types(BlockNode *p_block) {
 							return;
 						}
 
-						if (!lh_type.has_type && check_types) {
-							if (op->arguments[0]->type == Node::TYPE_OPERATOR) {
-								_mark_line_as_unsafe(op->line);
+						if (check_types) {
+							if (!lh_type.has_type) {
+								if (op->arguments[0]->type == Node::TYPE_OPERATOR) {
+									_mark_line_as_unsafe(op->line);
+								}
 							}
-						} else if (lh_type.is_constant) {
-							_set_error("Cannot assign a new value to a constant.", op->line);
-							return;
+							if (lh_type.is_constant) {
+								_set_error("Cannot assign a new value to a constant.", op->line);
+								return;
+							}
 						}
 
 						DataType rh_type;

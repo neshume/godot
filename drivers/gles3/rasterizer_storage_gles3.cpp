@@ -3634,6 +3634,7 @@ void RasterizerStorageGLES3::mesh_set_blend_shape_count(RID p_mesh, int p_amount
 	ERR_FAIL_COND(p_amount < 0);
 
 	mesh->blend_shape_count = p_amount;
+	mesh->instance_change_notify(true, false);
 }
 int RasterizerStorageGLES3::mesh_get_blend_shape_count(RID p_mesh) const {
 
@@ -5134,6 +5135,20 @@ void RasterizerStorageGLES3::skeleton_set_base_transform_2d(RID p_skeleton, cons
 	skeleton->base_transform_2d = p_base_transform;
 }
 
+void RasterizerStorageGLES3::skeleton_set_world_transform(RID p_skeleton, bool p_enable, const Transform &p_world_transform) {
+
+	Skeleton *skeleton = skeleton_owner.getornull(p_skeleton);
+
+	ERR_FAIL_COND(skeleton->use_2d);
+
+	skeleton->world_transform = p_world_transform;
+	skeleton->use_world_transform = p_enable;
+
+	if (!skeleton->update_list.in_list()) {
+		skeleton_update_list.add(&skeleton->update_list);
+	}
+}
+
 void RasterizerStorageGLES3::update_dirty_skeletons() {
 
 	glActiveTexture(GL_TEXTURE0);
@@ -5522,6 +5537,7 @@ void RasterizerStorageGLES3::reflection_probe_set_as_interior(RID p_probe, bool 
 	ERR_FAIL_COND(!reflection_probe);
 
 	reflection_probe->interior = p_enable;
+	reflection_probe->instance_change_notify(true, false);
 }
 void RasterizerStorageGLES3::reflection_probe_set_enable_box_projection(RID p_probe, bool p_enable) {
 
