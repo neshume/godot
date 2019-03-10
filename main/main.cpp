@@ -856,6 +856,7 @@ Error Main::setup(const char *execpath, int argc, char *argv[], bool p_second_ph
 	}
 
 	if (editor || project_manager) {
+		Engine::get_singleton()->set_editor_hint(true);
 		use_custom_res = false;
 		input_map->load_default(); //keys for editor
 	} else {
@@ -880,8 +881,7 @@ Error Main::setup(const char *execpath, int argc, char *argv[], bool p_second_ph
 		video_driver = GLOBAL_GET("rendering/quality/driver/driver_name");
 	}
 
-	GLOBAL_DEF("rendering/quality/driver/driver_fallback", "Best");
-	ProjectSettings::get_singleton()->set_custom_property_info("rendering/quality/driver/driver_fallback", PropertyInfo(Variant::STRING, "rendering/quality/driver/driver_fallback", PROPERTY_HINT_ENUM, "Best,Never"));
+	GLOBAL_DEF("rendering/quality/driver/fallback_to_gles2", false);
 
 	// Assigning here even though it's GLES2-specific, to be sure that it appears in docs
 	GLOBAL_DEF("rendering/quality/2d/gles2_use_nvidia_rect_flicker_workaround", false);
