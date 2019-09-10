@@ -86,8 +86,8 @@ void TabContainer::_gui_input(const Ref<InputEvent> &p_event) {
 			emit_signal("pre_popup_pressed");
 
 			Vector2 popup_pos = get_global_position();
-			popup_pos.x += size.width - popup->get_size().width;
-			popup_pos.y += menu->get_height();
+			popup_pos.x += size.width * get_global_transform().get_scale().x - popup->get_size().width * popup->get_global_transform().get_scale().x;
+			popup_pos.y += menu->get_height() * get_global_transform().get_scale().y;
 
 			popup->set_global_position(popup_pos);
 			popup->popup();
@@ -127,6 +127,9 @@ void TabContainer::_gui_input(const Ref<InputEvent> &p_event) {
 		// Activate the clicked tab.
 		pos.x -= tabs_ofs_cache;
 		for (int i = first_tab_cache; i <= last_tab_cache; i++) {
+			if (get_tab_hidden(i)) {
+				continue;
+			}
 			int tab_width = _get_tab_width(i);
 			if (pos.x < tab_width) {
 				if (!get_tab_disabled(i)) {
@@ -143,6 +146,11 @@ void TabContainer::_notification(int p_what) {
 
 	switch (p_what) {
 
+		case NOTIFICATION_TRANSLATION_CHANGED: {
+
+			minimum_size_changed();
+			update();
+		} break;
 		case NOTIFICATION_RESIZED: {
 
 			Vector<Control *> tabs = _get_tabs();
@@ -178,7 +186,6 @@ void TabContainer::_notification(int p_what) {
 				first_tab_cache--;
 			}
 		} break;
-
 		case NOTIFICATION_DRAW: {
 
 			RID canvas = get_canvas_item();
@@ -216,6 +223,9 @@ void TabContainer::_notification(int p_what) {
 			// Check if all tabs would fit into the header area.
 			int all_tabs_width = 0;
 			for (int i = 0; i < tabs.size(); i++) {
+				if (get_tab_hidden(i)) {
+					continue;
+				}
 				int tab_width = _get_tab_width(i);
 				all_tabs_width += tab_width;
 
@@ -241,6 +251,9 @@ void TabContainer::_notification(int p_what) {
 			all_tabs_width = 0;
 			Vector<int> tab_widths;
 			for (int i = first_tab_cache; i < tabs.size(); i++) {
+				if (get_tab_hidden(i)) {
+					continue;
+				}
 				int tab_width = _get_tab_width(i);
 				if (all_tabs_width + tab_width > header_width && tab_widths.size() > 0)
 					break;
@@ -267,6 +280,9 @@ void TabContainer::_notification(int p_what) {
 			// Draw all visible tabs.
 			int x = 0;
 			for (int i = 0; i < tab_widths.size(); i++) {
+				if (get_tab_hidden(i)) {
+					continue;
+				}
 				Ref<StyleBox> tab_style;
 				Color font_color;
 				if (get_tab_disabled(i + first_tab_cache)) {
@@ -287,7 +303,7 @@ void TabContainer::_notification(int p_what) {
 
 				// Draw the tab contents.
 				Control *control = Object::cast_to<Control>(tabs[i + first_tab_cache]);
-				String text = control->has_meta("_tab_name") ? String(tr(String(control->get_meta("_tab_name")))) : String(control->get_name());
+				String text = control->has_meta("_tab_name") ? String(tr(String(control->get_meta("_tab_name")))) : String(tr(control->get_name()));
 
 				int x_content = tab_rect.position.x + tab_style->get_margin(MARGIN_LEFT);
 				int top_margin = tab_style->get_margin(MARGIN_TOP);
@@ -338,6 +354,7 @@ void TabContainer::_notification(int p_what) {
 			}
 		} break;
 		case NOTIFICATION_THEME_CHANGED: {
+
 			minimum_size_changed();
 			call_deferred("_on_theme_changed"); //wait until all changed theme
 		} break;
@@ -354,7 +371,7 @@ int TabContainer::_get_tab_width(int p_index) const {
 
 	ERR_FAIL_INDEX_V(p_index, get_tab_count(), 0);
 	Control *control = Object::cast_to<Control>(_get_tabs()[p_index]);
-	if (!control || control->is_set_as_toplevel())
+	if (!control || control->is_set_as_toplevel() || get_tab_hidden(p_index))
 		return 0;
 
 	// Get the width of the text displayed on the tab.
@@ -719,6 +736,7 @@ void TabContainer::set_tab_title(int p_tab, const String &p_title) {
 	Control *child = _get_tab(p_tab);
 	ERR_FAIL_COND(!child);
 	child->set_meta("_tab_name", p_title);
+	update();
 }
 
 String TabContainer::get_tab_title(int p_tab) const {
@@ -736,6 +754,7 @@ void TabContainer::set_tab_icon(int p_tab, const Ref<Texture> &p_icon) {
 	Control *child = _get_tab(p_tab);
 	ERR_FAIL_COND(!child);
 	child->set_meta("_tab_icon", p_icon);
+	update();
 }
 Ref<Texture> TabContainer::get_tab_icon(int p_tab) const {
 
@@ -761,6 +780,36 @@ bool TabContainer::get_tab_disabled(int p_tab) const {
 	ERR_FAIL_COND_V(!child, false);
 	if (child->has_meta("_tab_disabled"))
 		return child->get_meta("_tab_disabled");
+	else
+		return false;
+}
+
+void TabContainer::set_tab_hidden(int p_tab, bool p_hidden) {
+
+	Control *child = _get_tab(p_tab);
+	ERR_FAIL_COND(!child);
+	child->set_meta("_tab_hidden", p_hidden);
+	update();
+	for (int i = 0; i < get_tab_count(); i++) {
+		int try_tab = (p_tab + 1 + i) % get_tab_count();
+		if (get_tab_disabled(try_tab) || get_tab_hidden(try_tab)) {
+			continue;
+		}
+
+		set_current_tab(try_tab);
+		return;
+	}
+
+	//assumed no other tab can be switched to, just hide
+	child->hide();
+}
+
+bool TabContainer::get_tab_hidden(int p_tab) const {
+
+	Control *child = _get_tab(p_tab);
+	ERR_FAIL_COND_V(!child, false);
+	if (child->has_meta("_tab_hidden"))
+		return child->get_meta("_tab_hidden");
 	else
 		return false;
 }
@@ -791,7 +840,7 @@ Size2 TabContainer::get_minimum_size() const {
 
 		Control *c = tabs[i];
 
-		if (!c->is_visible_in_tree())
+		if (!c->is_visible_in_tree() && !use_hidden_tabs_for_min_size)
 			continue;
 
 		Size2 cms = c->get_combined_minimum_size();
@@ -838,6 +887,13 @@ int TabContainer::get_tabs_rearrange_group() const {
 	return tabs_rearrange_group;
 }
 
+void TabContainer::set_use_hidden_tabs_for_min_size(bool p_use_hidden_tabs) {
+	use_hidden_tabs_for_min_size = p_use_hidden_tabs;
+}
+
+bool TabContainer::get_use_hidden_tabs_for_min_size() const {
+	return use_hidden_tabs_for_min_size;
+}
 void TabContainer::_bind_methods() {
 
 	ClassDB::bind_method(D_METHOD("_gui_input"), &TabContainer::_gui_input);
@@ -864,6 +920,9 @@ void TabContainer::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_tabs_rearrange_group", "group_id"), &TabContainer::set_tabs_rearrange_group);
 	ClassDB::bind_method(D_METHOD("get_tabs_rearrange_group"), &TabContainer::get_tabs_rearrange_group);
 
+	ClassDB::bind_method(D_METHOD("set_use_hidden_tabs_for_min_size", "enabled"), &TabContainer::set_use_hidden_tabs_for_min_size);
+	ClassDB::bind_method(D_METHOD("get_use_hidden_tabs_for_min_size"), &TabContainer::get_use_hidden_tabs_for_min_size);
+
 	ClassDB::bind_method(D_METHOD("_child_renamed_callback"), &TabContainer::_child_renamed_callback);
 	ClassDB::bind_method(D_METHOD("_on_theme_changed"), &TabContainer::_on_theme_changed);
 	ClassDB::bind_method(D_METHOD("_update_current_tab"), &TabContainer::_update_current_tab);
@@ -876,6 +935,7 @@ void TabContainer::_bind_methods() {
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "current_tab", PROPERTY_HINT_RANGE, "-1,4096,1", PROPERTY_USAGE_EDITOR), "set_current_tab", "get_current_tab");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "tabs_visible"), "set_tabs_visible", "are_tabs_visible");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "drag_to_rearrange_enabled"), "set_drag_to_rearrange_enabled", "get_drag_to_rearrange_enabled");
+	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "use_hidden_tabs_for_min_size"), "set_use_hidden_tabs_for_min_size", "get_use_hidden_tabs_for_min_size");
 
 	BIND_ENUM_CONSTANT(ALIGN_LEFT);
 	BIND_ENUM_CONSTANT(ALIGN_CENTER);
@@ -896,4 +956,5 @@ TabContainer::TabContainer() {
 	popup = NULL;
 	drag_to_rearrange_enabled = false;
 	tabs_rearrange_group = -1;
+	use_hidden_tabs_for_min_size = false;
 }

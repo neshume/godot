@@ -38,6 +38,8 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
+#include <errno.h>
+
 #if defined(UNIX_ENABLED)
 #include <unistd.h>
 #endif
@@ -112,8 +114,15 @@ Error FileAccessUnix::_open(const String &p_path, int p_mode_flags) {
 	f = fopen(path.utf8().get_data(), mode_string);
 
 	if (f == NULL) {
-		last_error = ERR_FILE_CANT_OPEN;
-		return ERR_FILE_CANT_OPEN;
+		switch (errno) {
+			case ENOENT: {
+				last_error = ERR_FILE_NOT_FOUND;
+			} break;
+			default: {
+				last_error = ERR_FILE_CANT_OPEN;
+			} break;
+		}
+		return last_error;
 	} else {
 		last_error = OK;
 		flags = p_mode_flags;
@@ -288,13 +297,28 @@ uint64_t FileAccessUnix::_get_modified_time(const String &p_file) {
 	if (!err) {
 		return flags.st_mtime;
 	} else {
-		ERR_EXPLAIN("Failed to get modified time for: " + p_file);
-		ERR_FAIL_V(0);
+		ERR_FAIL_V_MSG(0, "Failed to get modified time for: " + p_file + ".");
 	};
 }
 
-Error FileAccessUnix::_chmod(const String &p_path, int p_mod) {
-	int err = chmod(p_path.utf8().get_data(), p_mod);
+uint32_t FileAccessUnix::_get_unix_permissions(const String &p_file) {
+
+	String file = fix_path(p_file);
+	struct stat flags;
+	int err = stat(file.utf8().get_data(), &flags);
+
+	if (!err) {
+		return flags.st_mode & 0x7FF; //only permissions
+	} else {
+		ERR_FAIL_V_MSG(0, "Failed to get unix permissions for: " + p_file + ".");
+	};
+}
+
+Error FileAccessUnix::_set_unix_permissions(const String &p_file, uint32_t p_permissions) {
+
+	String file = fix_path(p_file);
+
+	int err = chmod(file.utf8().get_data(), p_permissions);
 	if (!err) {
 		return OK;
 	}

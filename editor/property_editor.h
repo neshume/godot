@@ -46,17 +46,13 @@
 #include "scene/gui/texture_rect.h"
 #include "scene/gui/tree.h"
 
-/**
-	@author Juan Linietsky <reduzio@gmail.com>
-*/
-
 class PropertyValueEvaluator;
 class CreateDialog;
 class PropertySelector;
 
 class EditorResourceConversionPlugin : public Reference {
 
-	GDCLASS(EditorResourceConversionPlugin, Reference)
+	GDCLASS(EditorResourceConversionPlugin, Reference);
 
 protected:
 	static void _bind_methods();

@@ -39,9 +39,6 @@
 #include "scene/gui/spin_box.h"
 #include "scene/gui/texture_button.h"
 
-/**
-	@author Juan Linietsky <reduzio@gmail.com>
-*/
 class AnimationTrackEditor;
 class AnimationPlayerEditorPlugin;
 
@@ -97,11 +94,10 @@ class AnimationPlayerEditor : public VBoxContainer {
 	Button *play_from;
 	Button *play_bw;
 	Button *play_bw_from;
-
-	//Button *pause;
 	Button *autoplay;
 
 	MenuButton *tool_anim;
+	ToolButton *onion_toggle;
 	MenuButton *onion_skinning;
 	ToolButton *pin;
 	SpinBox *frame;
@@ -165,13 +161,13 @@ class AnimationPlayerEditor : public VBoxContainer {
 	} onion;
 
 	void _select_anim_by_name(const String &p_anim);
+	double _get_editor_step() const;
 	void _play_pressed();
 	void _play_from_pressed();
 	void _play_bw_pressed();
 	void _play_bw_from_pressed();
 	void _autoplay_pressed();
 	void _stop_pressed();
-	void _pause_pressed();
 	void _animation_selected(int p_which);
 	void _animation_new();
 	void _animation_rename();
@@ -205,7 +201,6 @@ class AnimationPlayerEditor : public VBoxContainer {
 
 	void _animation_key_editor_seek(float p_pos, bool p_drag);
 	void _animation_key_editor_anim_len_changed(float p_len);
-	void _animation_key_editor_anim_step_changed(float p_len);
 
 	void _unhandled_key_input(const Ref<InputEvent> &p_ev);
 	void _animation_tool_menu(int p_option);
@@ -228,7 +223,6 @@ class AnimationPlayerEditor : public VBoxContainer {
 
 protected:
 	void _notification(int p_what);
-	void _gui_input(Ref<InputEvent> p_event);
 	void _node_removed(Node *p_node);
 	static void _bind_methods();
 

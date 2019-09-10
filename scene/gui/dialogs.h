@@ -37,9 +37,6 @@
 #include "scene/gui/panel.h"
 #include "scene/gui/popup.h"
 #include "scene/gui/texture_button.h"
-/**
-	@author Juan Linietsky <reduzio@gmail.com>
-*/
 
 class WindowDialog : public Popup {
 
@@ -144,6 +141,9 @@ public:
 
 	void set_text(String p_text);
 	String get_text() const;
+
+	void set_autowrap(bool p_autowrap);
+	bool has_autowrap();
 
 	AcceptDialog();
 	~AcceptDialog();

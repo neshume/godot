@@ -37,10 +37,6 @@
 #include "scene/gui/scroll_bar.h"
 #include "scene/gui/slider.h"
 
-/**
-	@author Juan Linietsky <reduzio@gmail.com>
-*/
-
 class Tree;
 
 class TreeItem : public Object {
@@ -197,8 +193,8 @@ public:
 	void set_icon_region(int p_column, const Rect2 &p_icon_region);
 	Rect2 get_icon_region(int p_column) const;
 
-	void set_icon_color(int p_column, const Color &p_icon_color);
-	Color get_icon_color(int p_column) const;
+	void set_icon_modulate(int p_column, const Color &p_modulate);
+	Color get_icon_modulate(int p_column) const;
 
 	void set_icon_max_width(int p_column, int p_max);
 	int get_icon_max_width(int p_column) const;
@@ -209,9 +205,10 @@ public:
 	int get_button_id(int p_column, int p_idx) const;
 	void erase_button(int p_column, int p_idx);
 	int get_button_by_id(int p_column, int p_id) const;
-	bool is_button_disabled(int p_column, int p_idx) const;
 	void set_button(int p_column, int p_idx, const Ref<Texture> &p_button);
 	void set_button_color(int p_column, int p_idx, const Color &p_color);
+	void set_button_disabled(int p_column, int p_idx, bool p_disabled);
+	bool is_button_disabled(int p_column, int p_idx) const;
 
 	/* range works for mode number or mode combo */
 
@@ -238,8 +235,8 @@ public:
 	TreeItem *get_parent();
 	TreeItem *get_children();
 
-	TreeItem *get_prev_visible();
-	TreeItem *get_next_visible();
+	TreeItem *get_prev_visible(bool p_wrap = false);
+	TreeItem *get_next_visible(bool p_wrap = false);
 
 	void remove_child(TreeItem *p_item);
 

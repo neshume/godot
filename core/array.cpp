@@ -133,12 +133,12 @@ void Array::erase(const Variant &p_value) {
 }
 
 Variant Array::front() const {
-	ERR_FAIL_COND_V(_p->array.size() == 0, Variant());
+	ERR_FAIL_COND_V_MSG(_p->array.size() == 0, Variant(), "Can't take value from empty array.");
 	return operator[](0);
 }
 
 Variant Array::back() const {
-	ERR_FAIL_COND_V(_p->array.size() == 0, Variant());
+	ERR_FAIL_COND_V_MSG(_p->array.size() == 0, Variant(), "Can't take value from empty array.");
 	return operator[](_p->array.size() - 1);
 }
 
@@ -165,8 +165,8 @@ int Array::rfind(const Variant &p_value, int p_from) const {
 
 		if (_p->array[i] == p_value) {
 			return i;
-		};
-	};
+		}
+	}
 
 	return -1;
 }
@@ -186,8 +186,8 @@ int Array::count(const Variant &p_value) const {
 
 		if (_p->array[i] == p_value) {
 			amount++;
-		};
-	};
+		}
+	}
 
 	return amount;
 }
@@ -399,6 +399,10 @@ Variant Array::max() const {
 		}
 	}
 	return maxval;
+}
+
+const void *Array::id() const {
+	return _p->array.ptr();
 }
 
 Array::Array(const Array &p_from) {

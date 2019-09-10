@@ -34,9 +34,6 @@
 #include "scene/gui/control.h"
 #include "scene/gui/popup_menu.h"
 
-/**
-	@author Juan Linietsky <reduzio@gmail.com>
-*/
 class LineEdit : public Control {
 
 	GDCLASS(LineEdit, Control);
@@ -72,6 +69,7 @@ private:
 	String undo_text;
 	String text;
 	String placeholder;
+	String placeholder_translated;
 	String secret_character;
 	float placeholder_alpha;
 	String ime_text;
@@ -125,6 +123,8 @@ private:
 	void _text_changed();
 	void _emit_text_change();
 	bool expand_to_text_length;
+
+	void update_placeholder_width();
 
 	bool caret_blink_enabled;
 	bool draw_caret;
