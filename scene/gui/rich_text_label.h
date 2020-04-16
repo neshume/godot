@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2019 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2019 Godot Engine contributors (cf. AUTHORS.md)    */
+/* Copyright (c) 2007-2020 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2020 Godot Engine contributors (cf. AUTHORS.md).   */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -98,13 +98,12 @@ private:
 		int maximum_width;
 
 		Line() {
-			from = NULL;
+			from = nullptr;
 			char_count = 0;
 		}
 	};
 
-	struct Item : public Object {
-
+	struct Item {
 		int index;
 		Item *parent;
 		ItemType type;
@@ -120,15 +119,16 @@ private:
 		}
 
 		Item() {
-			parent = NULL;
-			E = NULL;
+			parent = nullptr;
+			E = nullptr;
 			line = 0;
+			index = 0;
+			type = ITEM_FRAME;
 		}
 		virtual ~Item() { _clear_children(); }
 	};
 
 	struct ItemFrame : public Item {
-
 		int parent_line;
 		bool cell;
 		Vector<Line> lines;
@@ -137,77 +137,66 @@ private:
 
 		ItemFrame() {
 			type = ITEM_FRAME;
-			parent_frame = NULL;
+			parent_frame = nullptr;
 			cell = false;
 			parent_line = 0;
 		}
 	};
 
 	struct ItemText : public Item {
-
 		String text;
 		ItemText() { type = ITEM_TEXT; }
 	};
 
 	struct ItemImage : public Item {
-
-		Ref<Texture> image;
+		Ref<Texture2D> image;
+		Size2 size;
 		ItemImage() { type = ITEM_IMAGE; }
 	};
 
 	struct ItemFont : public Item {
-
 		Ref<Font> font;
 		ItemFont() { type = ITEM_FONT; }
 	};
 
 	struct ItemColor : public Item {
-
 		Color color;
 		ItemColor() { type = ITEM_COLOR; }
 	};
 
 	struct ItemUnderline : public Item {
-
 		ItemUnderline() { type = ITEM_UNDERLINE; }
 	};
 
 	struct ItemStrikethrough : public Item {
-
 		ItemStrikethrough() { type = ITEM_STRIKETHROUGH; }
 	};
 
 	struct ItemMeta : public Item {
-
 		Variant meta;
 		ItemMeta() { type = ITEM_META; }
 	};
 
 	struct ItemAlign : public Item {
-
 		Align align;
 		ItemAlign() { type = ITEM_ALIGN; }
 	};
 
 	struct ItemIndent : public Item {
-
 		int level;
 		ItemIndent() { type = ITEM_INDENT; }
 	};
 
 	struct ItemList : public Item {
-
 		ListType list_type;
 		ItemList() { type = ITEM_LIST; }
 	};
 
 	struct ItemNewline : public Item {
-
 		ItemNewline() { type = ITEM_NEWLINE; }
 	};
 
 	struct ItemTable : public Item {
-
 		struct Column {
 			bool expand;
 			int expand_ratio;
@@ -301,18 +290,20 @@ private:
 	};
 
 	struct ItemCustomFX : public ItemFX {
-		String identifier;
-		Dictionary environment;
+		Ref<CharFXTransform> char_fx_transform;
+		Ref<RichTextEffect> custom_effect;
 
 		ItemCustomFX() {
-			identifier = "";
-			environment = Dictionary();
 			type = ITEM_CUSTOMFX;
+
+			char_fx_transform.instance();
 		}
 
 		virtual ~ItemCustomFX() {
 			_clear_children();
-			environment.clear();
+
+			char_fx_transform.unref();
+			custom_effect.unref();
 		}
 	};
 
@@ -341,7 +332,7 @@ private:
 	ItemMeta *meta_hovering;
 	Variant current_meta;
 
-	Vector<Ref<RichTextEffect> > custom_effects;
+	Vector<Ref<RichTextEffect>> custom_effects;
 
 	void _invalidate_current_line(ItemFrame *p_frame);
 	void _validate_line_caches(ItemFrame *p_frame);
@@ -379,8 +370,8 @@ private:
 	int visible_characters;
 	float percent_visible;
 
-	int _process_line(ItemFrame *p_frame, const Vector2 &p_ofs, int &y, int p_width, int p_line, ProcessMode p_mode, const Ref<Font> &p_base_font, const Color &p_base_color, const Color &p_font_color_shadow, bool p_shadow_as_outline, const Point2 &shadow_ofs, const Point2i &p_click_pos = Point2i(), Item **r_click_item = NULL, int *r_click_char = NULL, bool *r_outside = NULL, int p_char_count = 0);
-	void _find_click(ItemFrame *p_frame, const Point2i &p_click, Item **r_click_item = NULL, int *r_click_char = NULL, bool *r_outside = NULL);
+	int _process_line(ItemFrame *p_frame, const Vector2 &p_ofs, int &y, int p_width, int p_line, ProcessMode p_mode, const Ref<Font> &p_base_font, const Color &p_base_color, const Color &p_font_color_shadow, bool p_shadow_as_outline, const Point2 &shadow_ofs, const Point2i &p_click_pos = Point2i(), Item **r_click_item = nullptr, int *r_click_char = nullptr, bool *r_outside = nullptr, int p_char_count = 0);
+	void _find_click(ItemFrame *p_frame, const Point2i &p_click, Item **r_click_item = nullptr, int *r_click_char = nullptr, bool *r_outside = nullptr);
 
 	Ref<Font> _find_font(Item *p_item);
 	int _find_margin(Item *p_item, const Ref<Font> &p_base_font);
@@ -388,35 +379,10 @@ private:
 	Color _find_color(Item *p_item, const Color &p_default_color);
 	bool _find_underline(Item *p_item);
 	bool _find_strikethrough(Item *p_item);
-	bool _find_meta(Item *p_item, Variant *r_meta, ItemMeta **r_item = NULL);
+	bool _find_meta(Item *p_item, Variant *r_meta, ItemMeta **r_item = nullptr);
 	bool _find_layout_subitem(Item *from, Item *to);
 	bool _find_by_type(Item *p_item, ItemType p_type);
-	template <typename T>
-	T *_fetch_by_type(Item *p_item, ItemType p_type) {
-		Item *item = p_item;
-		T *result = NULL;
-		while (item) {
-			if (item->type == p_type) {
-				result = Object::cast_to<T>(item);
-				if (result)
-					return result;
-			}
-			item = item->parent;
-		}
-
-		return result;
-	};
-	template <typename T>
-	void _fetch_item_stack(Item *p_item, Vector<T *> &r_stack) {
-		Item *item = p_item;
-		while (item) {
-			T *found = Object::cast_to<T>(item);
-			if (found) {
-				r_stack.push_back(found);
-			}
-			item = item->parent;
-		}
-	}
+	void _fetch_item_fx_stack(Item *p_item, Vector<ItemFX *> &r_stack);
 
 	void _update_scroll();
 	void _update_fx(ItemFrame *p_frame, float p_delta_time);
@@ -443,10 +409,15 @@ protected:
 public:
 	String get_text();
 	void add_text(const String &p_text);
-	void add_image(const Ref<Texture> &p_image);
+	void add_image(const Ref<Texture2D> &p_image, const int p_width = 0, const int p_height = 0);
 	void add_newline();
 	bool remove_line(const int p_line);
 	void push_font(const Ref<Font> &p_font);
+	void push_normal();
+	void push_bold();
+	void push_bold_italics();
+	void push_italics();
+	void push_mono();
 	void push_color(const Color &p_color);
 	void push_underline();
 	void push_strikethrough();
@@ -456,11 +427,11 @@ public:
 	void push_meta(const Variant &p_meta);
 	void push_table(int p_columns);
 	void push_fade(int p_start_index, int p_length);
-	void push_shake(int p_level, float p_rate);
+	void push_shake(int p_strength, float p_rate);
 	void push_wave(float p_frequency, float p_amplitude);
 	void push_tornado(float p_frequency, float p_radius);
 	void push_rainbow(float p_saturation, float p_value, float p_frequency);
-	void push_customfx(String p_identifier, Dictionary p_environment);
+	void push_customfx(Ref<RichTextEffect> p_custom_effect, Dictionary p_environment);
 	void set_table_column_expand(int p_column, bool p_expand, int p_ratio = 1);
 	int get_current_table_column() const;
 	void push_cell();
