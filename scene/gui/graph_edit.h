@@ -32,17 +32,16 @@
 #define GRAPH_EDIT_H
 
 #include "scene/gui/box_container.h"
+#include "scene/gui/button.h"
 #include "scene/gui/graph_node.h"
 #include "scene/gui/scroll_bar.h"
 #include "scene/gui/slider.h"
 #include "scene/gui/spin_box.h"
 #include "scene/gui/texture_rect.h"
-#include "scene/gui/tool_button.h"
 
 class GraphEdit;
 
 class GraphEditFilter : public Control {
-
 	GDCLASS(GraphEditFilter, Control);
 
 	friend class GraphEdit;
@@ -54,7 +53,6 @@ public:
 };
 
 class GraphEdit : public Control {
-
 	GDCLASS(GraphEdit, Control);
 
 public:
@@ -67,11 +65,11 @@ public:
 	};
 
 private:
-	ToolButton *zoom_minus;
-	ToolButton *zoom_reset;
-	ToolButton *zoom_plus;
+	Button *zoom_minus;
+	Button *zoom_reset;
+	Button *zoom_plus;
 
-	ToolButton *snap_button;
+	Button *snap_button;
 	SpinBox *snap_amount;
 
 	void _zoom_minus();
@@ -99,7 +97,6 @@ private:
 	bool dragging;
 	bool just_selected;
 	Vector2 drag_accum;
-	Point2 drag_origin; // Workaround for GH-5907
 
 	float zoom;
 
@@ -142,7 +139,6 @@ private:
 	bool lines_on_bg;
 
 	struct ConnType {
-
 		union {
 			struct {
 				uint32_t type_a;

@@ -1,12 +1,10 @@
-/* clang-format off */
-[vertex]
+#[vertex]
 
 #version 450
 
 VERSION_DEFINES
 
 layout(location = 0) out vec2 uv_interp;
-/* clang-format on */
 
 layout(push_constant, binding = 1, std430) uniform Params {
 	mat3 orientation;
@@ -17,14 +15,12 @@ layout(push_constant, binding = 1, std430) uniform Params {
 params;
 
 void main() {
-
 	vec2 base_arr[4] = vec2[](vec2(-1.0, -1.0), vec2(-1.0, 1.0), vec2(1.0, 1.0), vec2(1.0, -1.0));
 	uv_interp = base_arr[gl_VertexIndex];
 	gl_Position = vec4(uv_interp, 1.0, 1.0);
 }
 
-/* clang-format off */
-[fragment]
+#[fragment]
 
 #version 450
 
@@ -33,7 +29,6 @@ VERSION_DEFINES
 #define M_PI 3.14159265359
 
 layout(location = 0) in vec2 uv_interp;
-/* clang-format on */
 
 layout(push_constant, binding = 1, std430) uniform Params {
 	mat3 orientation;
@@ -57,6 +52,11 @@ params;
 #define SAMPLER_LINEAR_WITH_MIPMAPS_ANISOTROPIC_REPEAT 11
 
 layout(set = 0, binding = 0) uniform sampler material_samplers[12];
+
+layout(set = 0, binding = 1, std430) restrict readonly buffer GlobalVariableData {
+	vec4 data[];
+}
+global_variables;
 
 #ifdef USE_MATERIAL_UNIFORMS
 layout(set = 1, binding = 0, std140) uniform MaterialUniforms{
@@ -96,15 +96,15 @@ layout(set = 2, binding = 2) uniform texture2D quarter_res;
 #endif
 
 struct DirectionalLightData {
-	vec3 direction;
-	float energy;
-	vec3 color;
+	vec4 direction_energy;
+	vec4 color_size;
 	bool enabled;
 };
 
 layout(set = 3, binding = 0, std140) uniform DirectionalLights {
 	DirectionalLightData data[MAX_DIRECTIONAL_LIGHT_DATA_STRUCTS];
 }
+
 directional_lights;
 
 /* clang-format off */
@@ -116,7 +116,6 @@ FRAGMENT_SHADER_GLOBALS
 layout(location = 0) out vec4 frag_color;
 
 void main() {
-
 	vec3 cube_normal;
 	cube_normal.z = -1.0;
 	cube_normal.x = (cube_normal.z * (-uv_interp.x - params.proj.x)) / params.proj.y;
