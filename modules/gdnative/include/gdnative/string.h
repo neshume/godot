@@ -111,7 +111,6 @@ godot_int GDAPI godot_string_findmk_from(const godot_string *p_self, const godot
 godot_int GDAPI godot_string_findmk_from_in_place(const godot_string *p_self, const godot_array *p_keys, godot_int p_from, godot_int *r_key);
 godot_int GDAPI godot_string_findn(const godot_string *p_self, godot_string p_what);
 godot_int GDAPI godot_string_findn_from(const godot_string *p_self, godot_string p_what, godot_int p_from);
-godot_int GDAPI godot_string_find_last(const godot_string *p_self, godot_string p_what);
 godot_string GDAPI godot_string_format(const godot_string *p_self, const godot_variant *p_values);
 godot_string GDAPI godot_string_format_with_custom_placeholder(const godot_string *p_self, const godot_variant *p_values, const char *p_placeholder);
 godot_string GDAPI godot_string_hex_encode_buffer(const uint8_t *p_buffer, godot_int p_len);
@@ -146,14 +145,13 @@ godot_string GDAPI godot_string_rpad_with_custom_character(const godot_string *p
 godot_real GDAPI godot_string_similarity(const godot_string *p_self, const godot_string *p_string);
 godot_string GDAPI godot_string_sprintf(const godot_string *p_self, const godot_array *p_values, godot_bool *p_error);
 godot_string GDAPI godot_string_substr(const godot_string *p_self, godot_int p_from, godot_int p_chars);
-double GDAPI godot_string_to_double(const godot_string *p_self);
-godot_real GDAPI godot_string_to_float(const godot_string *p_self);
+double GDAPI godot_string_to_float(const godot_string *p_self);
 godot_int GDAPI godot_string_to_int(const godot_string *p_self);
 
 godot_string GDAPI godot_string_camelcase_to_underscore(const godot_string *p_self);
 godot_string GDAPI godot_string_camelcase_to_underscore_lowercased(const godot_string *p_self);
 godot_string GDAPI godot_string_capitalize(const godot_string *p_self);
-double GDAPI godot_string_char_to_double(const char *p_what);
+double GDAPI godot_string_char_to_float(const char *p_what);
 godot_int GDAPI godot_string_char_to_int(const char *p_what);
 int64_t GDAPI godot_string_wchar_to_int(const wchar_t *p_str);
 godot_int GDAPI godot_string_char_to_int_with_len(const char *p_what, godot_int p_len);
@@ -161,7 +159,7 @@ int64_t GDAPI godot_string_char_to_int64_with_len(const wchar_t *p_str, int p_le
 int64_t GDAPI godot_string_hex_to_int64(const godot_string *p_self);
 int64_t GDAPI godot_string_hex_to_int64_with_prefix(const godot_string *p_self);
 int64_t GDAPI godot_string_to_int64(const godot_string *p_self);
-double GDAPI godot_string_unicode_char_to_double(const wchar_t *p_str, const wchar_t **r_end);
+double GDAPI godot_string_unicode_char_to_float(const wchar_t *p_str, const wchar_t **r_end);
 
 godot_int GDAPI godot_string_get_slice_count(const godot_string *p_self, godot_string p_splitter);
 godot_string GDAPI godot_string_get_slice(const godot_string *p_self, godot_string p_splitter, godot_int p_slice);

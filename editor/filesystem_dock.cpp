@@ -1688,7 +1688,7 @@ void FileSystemDock::_file_option(int p_option, const Vector<String> &p_selected
 						String name = to_rename.path.get_file();
 						rename_dialog->set_title(TTR("Renaming file:") + " " + name);
 						rename_dialog_text->set_text(name);
-						rename_dialog_text->select(0, name.find_last("."));
+						rename_dialog_text->select(0, name.rfind("."));
 					} else {
 						String name = to_rename.path.substr(0, to_rename.path.length() - 1).get_file();
 						rename_dialog->set_title(TTR("Renaming folder:") + " " + name);
@@ -1732,7 +1732,7 @@ void FileSystemDock::_file_option(int p_option, const Vector<String> &p_selected
 					String name = to_duplicate.path.get_file();
 					duplicate_dialog->set_title(TTR("Duplicating file:") + " " + name);
 					duplicate_dialog_text->set_text(name);
-					duplicate_dialog_text->select(0, name.find_last("."));
+					duplicate_dialog_text->select(0, name.rfind("."));
 				} else {
 					String name = to_duplicate.path.substr(0, to_duplicate.path.length() - 1).get_file();
 					duplicate_dialog->set_title(TTR("Duplicating folder:") + " " + name);
@@ -2313,7 +2313,7 @@ void FileSystemDock::_tree_rmb_select(const Vector2 &p_pos) {
 		tree_popup->clear();
 		tree_popup->set_size(Size2(1, 1));
 		_file_and_folders_fill_popup(tree_popup, paths);
-		tree_popup->set_position(tree->get_global_position() + p_pos);
+		tree_popup->set_position(tree->get_screen_position() + p_pos);
 		tree_popup->popup();
 	}
 }
@@ -2430,10 +2430,30 @@ void FileSystemDock::_file_list_gui_input(Ref<InputEvent> p_event) {
 	}
 }
 
-void FileSystemDock::_update_import_dock() {
-	if (!import_dock_needs_update) {
+void FileSystemDock::_get_imported_files(const String &p_path, Vector<String> &files) const {
+	if (!p_path.ends_with("/")) {
+		if (FileAccess::exists(p_path + ".import")) {
+			files.push_back(p_path);
+		}
 		return;
 	}
+
+	DirAccess *da = DirAccess::open(p_path);
+	da->list_dir_begin();
+	String n = da->get_next();
+	while (n != String()) {
+		if (n != "." && n != ".." && !n.ends_with(".import")) {
+			String npath = p_path + n + (da->current_is_dir() ? "/" : "");
+			_get_imported_files(npath, files);
+		}
+		n = da->get_next();
+	}
+	da->list_dir_end();
+}
+
+void FileSystemDock::_update_import_dock() {
+	if (!import_dock_needs_update)
+		return;
 
 	// List selected.
 	Vector<String> selected;
@@ -2444,29 +2464,24 @@ void FileSystemDock::_update_import_dock() {
 	} else {
 		// Use the file list.
 		for (int i = 0; i < files->get_item_count(); i++) {
-			if (!files->is_selected(i)) {
+			if (!files->is_selected(i))
 				continue;
-			}
 
 			selected.push_back(files->get_item_metadata(i));
 		}
 	}
 
+	// Expand directory selection
+	Vector<String> efiles;
+	for (int i = 0; i < selected.size(); i++) {
+		_get_imported_files(selected[i], efiles);
+	}
+
 	// Check import.
 	Vector<String> imports;
 	String import_type;
-	for (int i = 0; i < selected.size(); i++) {
-		String fpath = selected[i];
-
-		if (fpath.ends_with("/")) {
-			imports.clear();
-			break;
-		}
-
-		if (!FileAccess::exists(fpath + ".import")) {
-			imports.clear();
-			break;
-		}
+	for (int i = 0; i < efiles.size(); i++) {
+		String fpath = efiles[i];
 		Ref<ConfigFile> cf;
 		cf.instance();
 		Error err = cf->load(fpath + ".import");
@@ -2508,10 +2523,10 @@ void FileSystemDock::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("_tree_thumbnail_done"), &FileSystemDock::_tree_thumbnail_done);
 	ClassDB::bind_method(D_METHOD("_select_file"), &FileSystemDock::_select_file);
 
-	ClassDB::bind_method(D_METHOD("get_drag_data_fw"), &FileSystemDock::get_drag_data_fw);
-	ClassDB::bind_method(D_METHOD("can_drop_data_fw"), &FileSystemDock::can_drop_data_fw);
-	ClassDB::bind_method(D_METHOD("drop_data_fw"), &FileSystemDock::drop_data_fw);
-	ClassDB::bind_method(D_METHOD("navigate_to_path"), &FileSystemDock::navigate_to_path);
+	ClassDB::bind_method(D_METHOD("get_drag_data_fw", "position", "from"), &FileSystemDock::get_drag_data_fw);
+	ClassDB::bind_method(D_METHOD("can_drop_data_fw", "position", "data", "from"), &FileSystemDock::can_drop_data_fw);
+	ClassDB::bind_method(D_METHOD("drop_data_fw", "position", "data", "from"), &FileSystemDock::drop_data_fw);
+	ClassDB::bind_method(D_METHOD("navigate_to_path", "path"), &FileSystemDock::navigate_to_path);
 
 	ClassDB::bind_method(D_METHOD("_update_import_dock"), &FileSystemDock::_update_import_dock);
 

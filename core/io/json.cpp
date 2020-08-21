@@ -265,7 +265,7 @@ Error JSON::_get_token(const CharType *p_str, int &index, int p_len, Token &r_to
 				if (p_str[index] == '-' || (p_str[index] >= '0' && p_str[index] <= '9')) {
 					//a number
 					const CharType *rptr;
-					double number = String::to_double(&p_str[index], &rptr);
+					double number = String::to_float(&p_str[index], &rptr);
 					index += (rptr - &p_str[index]);
 					r_token.type = TK_NUMBER;
 					r_token.value = number;
@@ -371,6 +371,7 @@ Error JSON::_parse_array(Array &array, const CharType *p_str, int &index, int p_
 		need_comma = true;
 	}
 
+	r_err_str = "Expected ']'";
 	return ERR_PARSE_ERROR;
 }
 
@@ -433,6 +434,7 @@ Error JSON::_parse_object(Dictionary &object, const CharType *p_str, int &index,
 		}
 	}
 
+	r_err_str = "Expected '}'";
 	return ERR_PARSE_ERROR;
 }
 

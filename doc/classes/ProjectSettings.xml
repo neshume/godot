@@ -244,7 +244,7 @@
 		<member name="audio/default_bus_layout" type="String" setter="" getter="" default="&quot;res://default_bus_layout.tres&quot;">
 			Default [AudioBusLayout] resource file to use in the project, unless overridden by the scene.
 		</member>
-		<member name="audio/driver" type="String" setter="" getter="" default="&quot;PulseAudio&quot;">
+		<member name="audio/driver" type="String" setter="" getter="">
 			Specifies the audio driver to use. This setting is platform-dependent as each platform supports different audio drivers. If left empty, the default audio driver will be used.
 		</member>
 		<member name="audio/enable_audio_input" type="bool" setter="" getter="" default="false">
@@ -255,6 +255,9 @@
 		</member>
 		<member name="audio/output_latency" type="int" setter="" getter="" default="15">
 			Output latency in milliseconds for audio. Lower values will result in lower audio latency at the cost of increased CPU usage. Low values may result in audible cracking on slower hardware.
+		</member>
+		<member name="audio/output_latency.web" type="int" setter="" getter="" default="50">
+			Safer override for [member audio/output_latency] in the Web platform, to avoid audio issues especially on mobile devices.
 		</member>
 		<member name="audio/video_delay_compensation_ms" type="int" setter="" getter="" default="0">
 			Setting to hardcode audio delay when playing video. Best to leave this untouched unless you know what you are doing.
@@ -277,6 +280,10 @@
 		<member name="debug/gdscript/completion/autocomplete_setters_and_getters" type="bool" setter="" getter="" default="false">
 			If [code]true[/code], displays getters and setters in autocompletion results in the script editor. This setting is meant to be used when porting old projects (Godot 2), as using member variables is the preferred style from Godot 3 onwards.
 		</member>
+		<member name="debug/gdscript/warnings/assert_always_false" type="bool" setter="" getter="" default="true">
+		</member>
+		<member name="debug/gdscript/warnings/assert_always_true" type="bool" setter="" getter="" default="true">
+		</member>
 		<member name="debug/gdscript/warnings/constant_used_as_function" type="bool" setter="" getter="" default="true">
 			If [code]true[/code], enables warnings when a constant is used as a function.
 		</member>
@@ -288,15 +295,6 @@
 		</member>
 		<member name="debug/gdscript/warnings/exclude_addons" type="bool" setter="" getter="" default="true">
 			If [code]true[/code], scripts in the [code]res://addons[/code] folder will not generate warnings.
-		</member>
-		<member name="debug/gdscript/warnings/function_conflicts_constant" type="bool" setter="" getter="" default="true">
-			If [code]true[/code], enables warnings when a function is declared with the same name as a constant.
-		</member>
-		<member name="debug/gdscript/warnings/function_conflicts_variable" type="bool" setter="" getter="" default="true">
-			If [code]true[/code], enables warnings when a function is declared with the same name as a variable. This will turn into an error in a future version when first-class functions become supported in GDScript.
-		</member>
-		<member name="debug/gdscript/warnings/function_may_yield" type="bool" setter="" getter="" default="true">
-			If [code]true[/code], enables warnings when a function assigned to a variable may yield and return a function state instead of a value.
 		</member>
 		<member name="debug/gdscript/warnings/function_used_as_property" type="bool" setter="" getter="" default="true">
 			If [code]true[/code], enables warnings when using a function as if it was a property.
@@ -313,11 +311,15 @@
 		<member name="debug/gdscript/warnings/property_used_as_function" type="bool" setter="" getter="" default="true">
 			If [code]true[/code], enables warnings when using a property as if it was a function.
 		</member>
+		<member name="debug/gdscript/warnings/redundant_await" type="bool" setter="" getter="" default="true">
+		</member>
 		<member name="debug/gdscript/warnings/return_value_discarded" type="bool" setter="" getter="" default="true">
 			If [code]true[/code], enables warnings when calling a function without using its return value (by assigning it to a variable or using it as a function argument). Such return values are sometimes used to denote possible errors using the [enum Error] enum.
 		</member>
 		<member name="debug/gdscript/warnings/shadowed_variable" type="bool" setter="" getter="" default="true">
 			If [code]true[/code], enables warnings when defining a local or subclass member variable that would shadow a variable at an upper level (such as a member variable).
+		</member>
+		<member name="debug/gdscript/warnings/shadowed_variable_base_class" type="bool" setter="" getter="" default="true">
 		</member>
 		<member name="debug/gdscript/warnings/standalone_expression" type="bool" setter="" getter="" default="true">
 			If [code]true[/code], enables warnings when calling an expression that has no effect on the surrounding code, such as writing [code]2 + 2[/code] as a statement.
@@ -337,6 +339,8 @@
 		<member name="debug/gdscript/warnings/unreachable_code" type="bool" setter="" getter="" default="true">
 			If [code]true[/code], enables warnings when unreachable code is detected (such as after a [code]return[/code] statement that will always be executed).
 		</member>
+		<member name="debug/gdscript/warnings/unreachable_pattern" type="bool" setter="" getter="" default="true">
+		</member>
 		<member name="debug/gdscript/warnings/unsafe_call_argument" type="bool" setter="" getter="" default="false">
 			If [code]true[/code], enables warnings when using an expression whose type may not be compatible with the function parameter expected.
 		</member>
@@ -349,20 +353,17 @@
 		<member name="debug/gdscript/warnings/unsafe_property_access" type="bool" setter="" getter="" default="false">
 			If [code]true[/code], enables warnings when accessing a property whose presence is not guaranteed at compile-time in the class.
 		</member>
-		<member name="debug/gdscript/warnings/unused_argument" type="bool" setter="" getter="" default="true">
-			If [code]true[/code], enables warnings when a function parameter is unused.
+		<member name="debug/gdscript/warnings/unused_local_constant" type="bool" setter="" getter="" default="true">
 		</member>
-		<member name="debug/gdscript/warnings/unused_class_variable" type="bool" setter="" getter="" default="false">
-			If [code]true[/code], enables warnings when a member variable is unused.
+		<member name="debug/gdscript/warnings/unused_parameter" type="bool" setter="" getter="" default="true">
+		</member>
+		<member name="debug/gdscript/warnings/unused_private_class_variable" type="bool" setter="" getter="" default="true">
 		</member>
 		<member name="debug/gdscript/warnings/unused_signal" type="bool" setter="" getter="" default="true">
 			If [code]true[/code], enables warnings when a signal is unused.
 		</member>
 		<member name="debug/gdscript/warnings/unused_variable" type="bool" setter="" getter="" default="true">
 			If [code]true[/code], enables warnings when a local variable is unused.
-		</member>
-		<member name="debug/gdscript/warnings/variable_conflicts_function" type="bool" setter="" getter="" default="true">
-			If [code]true[/code], enables warnings when a variable is declared with the same name as a function. This will turn into an error in a future version when first-class functions become supported in GDScript.
 		</member>
 		<member name="debug/gdscript/warnings/void_assignment" type="bool" setter="" getter="" default="true">
 			If [code]true[/code], enables warnings when assigning the result of a function that returns [code]void[/code] to a variable.
@@ -450,7 +451,7 @@
 		<member name="display/window/size/width" type="int" setter="" getter="" default="1024">
 			Sets the game's main viewport width. On desktop platforms, this is the default window size. Stretch mode settings also use this as a reference when enabled.
 		</member>
-		<member name="display/window/tablet_driver" type="String" setter="" getter="" default="&quot;&quot;">
+		<member name="display/window/tablet_driver" type="String" setter="" getter="">
 			Specifies the tablet driver to use. If left empty, the default driver will be used.
 		</member>
 		<member name="display/window/vsync/use_vsync" type="bool" setter="" getter="" default="true">
@@ -469,8 +470,8 @@
 		<member name="gui/common/default_scroll_deadzone" type="int" setter="" getter="" default="0">
 			Default value for [member ScrollContainer.scroll_deadzone], which will be used for all [ScrollContainer]s unless overridden.
 		</member>
-		<member name="gui/common/swap_ok_cancel" type="bool" setter="" getter="" default="false">
-			If [code]true[/code], swaps OK and Cancel buttons in dialogs on Windows and UWP to follow interface conventions.
+		<member name="gui/common/swap_cancel_ok" type="bool" setter="" getter="">
+			If [code]true[/code], swaps Cancel and OK buttons in dialogs on Windows and UWP to follow interface conventions.
 		</member>
 		<member name="gui/common/text_edit_undo_stack_max_size" type="int" setter="" getter="" default="1024">
 		</member>
@@ -799,10 +800,12 @@
 		<member name="logging/file_logging/enable_file_logging" type="bool" setter="" getter="" default="false">
 			If [code]true[/code], logs all output to files.
 		</member>
-		<member name="logging/file_logging/log_path" type="String" setter="" getter="" default="&quot;user://logs/log.txt&quot;">
+		<member name="logging/file_logging/enable_file_logging.pc" type="bool" setter="" getter="" default="true">
+		</member>
+		<member name="logging/file_logging/log_path" type="String" setter="" getter="" default="&quot;user://logs/godot.log&quot;">
 			Path to logs within the project. Using an [code]user://[/code] path is recommended.
 		</member>
-		<member name="logging/file_logging/max_log_files" type="int" setter="" getter="" default="10">
+		<member name="logging/file_logging/max_log_files" type="int" setter="" getter="" default="5">
 			Specifies the maximum amount of log files allowed (used for rotation).
 		</member>
 		<member name="memory/limits/message_queue/max_size_kb" type="int" setter="" getter="" default="1024">
@@ -987,10 +990,6 @@
 		</member>
 		<member name="rendering/limits/time/time_rollover_secs" type="float" setter="" getter="" default="3600">
 		</member>
-		<member name="rendering/quality/2d/gles2_use_nvidia_rect_flicker_workaround" type="bool" setter="" getter="" default="false">
-			Some NVIDIA GPU drivers have a bug which produces flickering issues for the [code]draw_rect[/code] method, especially as used in [TileMap]. Refer to [url=https://github.com/godotengine/godot/issues/9913]GitHub issue 9913[/url] for details.
-			If [code]true[/code], this option enables a "safe" code path for such NVIDIA GPUs at the cost of performance. This option only impacts the GLES2 rendering backend, and only desktop platforms. It is not necessary when using the Vulkan backend.
-		</member>
 		<member name="rendering/quality/2d/use_pixel_snap" type="bool" setter="" getter="" default="false">
 			If [code]true[/code], forces snapping of polygons to pixels in 2D rendering. May help in some pixel art styles.
 		</member>
@@ -1078,13 +1077,13 @@
 		</member>
 		<member name="rendering/quality/screen_filters/screen_space_aa" type="int" setter="" getter="" default="0">
 			Sets the screen-space antialiasing mode for the default screen [Viewport]. Screen-space antialiasing works by selectively blurring edges in a post-process shader. It differs from MSAA which takes multiple coverage samples while rendering objects. Screen-space AA methods are typically faster than MSAA and will smooth out specular aliasing, but tend to make scenes appear blurry.
-			Another way to combat specular aliasing is to enable [member rendering/quality/screen_filters/screen_space_roughness_limiter].
+			Another way to combat specular aliasing is to enable [member rendering/quality/screen_filters/screen_space_roughness_limiter_enabled].
 		</member>
-		<member name="rendering/quality/screen_filters/screen_space_roughness_limiter" type="int" setter="" getter="" default="0">
-			Enables the screen-space roughness limiter which increases material roughness in areas with a high normal frequency (i.e. when normals change a lot from pixel to pixel). This helps to reduce the amount of specular aliasing in a scene. Specular aliasing looks like random bright pixels that occur in reflections.
+		<member name="rendering/quality/screen_filters/screen_space_roughness_limiter_amount" type="float" setter="" getter="" default="0.25">
 		</member>
-		<member name="rendering/quality/screen_filters/screen_space_roughness_limiter_curve" type="float" setter="" getter="" default="1.0">
-			Curves the amount of the roughness limited effect. A higher value limits the effect to very sharply curved surfaces, while a lower threshold extends the effect to smoother surfaces.
+		<member name="rendering/quality/screen_filters/screen_space_roughness_limiter_enabled" type="bool" setter="" getter="" default="true">
+		</member>
+		<member name="rendering/quality/screen_filters/screen_space_roughness_limiter_limit" type="float" setter="" getter="" default="0.18">
 		</member>
 		<member name="rendering/quality/screen_space_reflection/roughness_quality" type="int" setter="" getter="" default="1">
 			Sets the quality for rough screen-space reflections. Turning off will make all screen space reflections sharp, while higher values make rough reflections look better.
@@ -1151,6 +1150,10 @@
 		</member>
 		<member name="rendering/quality/texture_filters/use_nearest_mipmap_filter" type="bool" setter="" getter="" default="false">
 			If [code]true[/code], uses nearest-neighbor mipmap filtering when using mipmaps (also called "bilinear filtering"), which will result in visible seams appearing between mipmap stages. This may increase performance in mobile as less memory bandwidth is used. If [code]false[/code], linear mipmap filtering (also called "trilinear filtering") is used.
+		</member>
+		<member name="rendering/sdfgi/frames_to_converge" type="int" setter="" getter="" default="1">
+		</member>
+		<member name="rendering/sdfgi/probe_ray_count" type="int" setter="" getter="" default="2">
 		</member>
 		<member name="rendering/threads/thread_model" type="int" setter="" getter="" default="1">
 			Thread model for rendering. Rendering on a thread can vastly improve performance, but synchronizing to the main thread can cause a bit more jitter.

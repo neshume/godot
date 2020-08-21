@@ -132,18 +132,13 @@ void CSGShape3D::_make_dirty() {
 		return;
 	}
 
-	if (dirty) {
-		return;
+	if (parent) {
+		parent->_make_dirty();
+	} else if (!dirty) {
+		call_deferred("_update_shape");
 	}
 
 	dirty = true;
-
-	if (parent) {
-		parent->_make_dirty();
-	} else {
-		//only parent will do
-		call_deferred("_update_shape");
-	}
 }
 
 CSGBrush *CSGShape3D::_get_brush() {
@@ -511,6 +506,12 @@ void CSGShape3D::_notification(int p_what) {
 		_make_dirty();
 	}
 
+	if (p_what == NOTIFICATION_TRANSFORM_CHANGED) {
+		if (use_collision && is_root_shape() && root_collision_instance.is_valid()) {
+			PhysicsServer3D::get_singleton()->body_set_state(root_collision_instance, PhysicsServer3D::BODY_STATE_TRANSFORM, get_global_transform());
+		}
+	}
+
 	if (p_what == NOTIFICATION_LOCAL_TRANSFORM_CHANGED) {
 		if (parent) {
 			parent->_make_dirty();
@@ -646,7 +647,7 @@ CSGShape3D::~CSGShape3D() {
 //////////////////////////////////
 
 CSGBrush *CSGCombiner3D::_build_brush() {
-	return nullptr; //does not build anything
+	return memnew(CSGBrush); //does not build anything
 }
 
 CSGCombiner3D::CSGCombiner3D() {

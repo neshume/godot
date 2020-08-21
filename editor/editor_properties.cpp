@@ -253,7 +253,7 @@ void EditorPropertyPath::_path_pressed() {
 		dialog->set_current_path(full_path);
 	}
 
-	dialog->popup_centered_ratio();
+	dialog->popup_file_dialog();
 }
 
 void EditorPropertyPath::update_property() {
@@ -377,13 +377,13 @@ void EditorPropertyMember::_property_select() {
 		selector->select_method_from_base_type(hint_text, current);
 
 	} else if (hint == MEMBER_METHOD_OF_INSTANCE) {
-		Object *instance = ObjectDB::get_instance(ObjectID(hint_text.to_int64()));
+		Object *instance = ObjectDB::get_instance(ObjectID(hint_text.to_int()));
 		if (instance) {
 			selector->select_method_from_instance(instance, current);
 		}
 
 	} else if (hint == MEMBER_METHOD_OF_SCRIPT) {
-		Object *obj = ObjectDB::get_instance(ObjectID(hint_text.to_int64()));
+		Object *obj = ObjectDB::get_instance(ObjectID(hint_text.to_int()));
 		if (Object::cast_to<Script>(obj)) {
 			selector->select_method_from_script(Object::cast_to<Script>(obj), current);
 		}
@@ -408,13 +408,13 @@ void EditorPropertyMember::_property_select() {
 		selector->select_property_from_base_type(hint_text, current);
 
 	} else if (hint == MEMBER_PROPERTY_OF_INSTANCE) {
-		Object *instance = ObjectDB::get_instance(ObjectID(hint_text.to_int64()));
+		Object *instance = ObjectDB::get_instance(ObjectID(hint_text.to_int()));
 		if (instance) {
 			selector->select_property_from_instance(instance, current);
 		}
 
 	} else if (hint == MEMBER_PROPERTY_OF_SCRIPT) {
-		Object *obj = ObjectDB::get_instance(ObjectID(hint_text.to_int64()));
+		Object *obj = ObjectDB::get_instance(ObjectID(hint_text.to_int()));
 		if (Object::cast_to<Script>(obj)) {
 			selector->select_property_from_script(Object::cast_to<Script>(obj), current);
 		}
@@ -488,7 +488,7 @@ void EditorPropertyEnum::setup(const Vector<String> &p_options) {
 	for (int i = 0; i < p_options.size(); i++) {
 		Vector<String> text_split = p_options[i].split(":");
 		if (text_split.size() != 1) {
-			current_val = text_split[1].to_int64();
+			current_val = text_split[1].to_int();
 		}
 		options->add_item(text_split[0]);
 		options->set_item_metadata(i, current_val);
@@ -584,12 +584,12 @@ public:
 	Vector<String> tooltips;
 	int hovered_index;
 
-	virtual Size2 get_minimum_size() const {
+	virtual Size2 get_minimum_size() const override {
 		Ref<Font> font = get_theme_font("font", "Label");
 		return Vector2(0, font->get_height() * 2);
 	}
 
-	virtual String get_tooltip(const Point2 &p_pos) const {
+	virtual String get_tooltip(const Point2 &p_pos) const override {
 		for (int i = 0; i < flag_rects.size(); i++) {
 			if (i < tooltips.size() && flag_rects[i].has_point(p_pos)) {
 				return tooltips[i];
@@ -946,20 +946,27 @@ void EditorPropertyEasing::_drag_easing(const Ref<InputEvent> &p_ev) {
 		}
 
 		float val = get_edited_object()->get(get_edited_property());
-		if (val == 0) {
-			return;
-		}
 		bool sg = val < 0;
 		val = Math::absf(val);
 
 		val = Math::log(val) / Math::log((float)2.0);
-		//logspace
+		// Logarithmic space.
 		val += rel * 0.05;
 
 		val = Math::pow(2.0f, val);
 		if (sg) {
 			val = -val;
 		}
+
+		// 0 is a singularity, but both positive and negative values
+		// are otherwise allowed. Enforce 0+ as workaround.
+		if (Math::is_zero_approx(val)) {
+			val = 0.00001;
+		}
+
+		// Limit to a reasonable value to prevent the curve going into infinity,
+		// which can cause crashes and other issues.
+		val = CLAMP(val, -1'000'000, 1'000'000);
 
 		emit_changed(get_edited_property(), val);
 		easing_draw->update();
@@ -1003,7 +1010,18 @@ void EditorPropertyEasing::_draw_easing() {
 	}
 
 	easing_draw->draw_multiline(lines, line_color, 1.0);
-	f->draw(ci, Point2(10, 10 + f->get_ascent()), String::num(exp, 2), font_color);
+	// Draw more decimals for small numbers since higher precision is usually required for fine adjustments.
+	int decimals;
+	if (Math::abs(exp) < 0.1 - CMP_EPSILON) {
+		decimals = 4;
+	} else if (Math::abs(exp) < 1 - CMP_EPSILON) {
+		decimals = 3;
+	} else if (Math::abs(exp) < 10 - CMP_EPSILON) {
+		decimals = 2;
+	} else {
+		decimals = 1;
+	}
+	f->draw(ci, Point2(10, 10 + f->get_ascent()), rtos(exp).pad_decimals(decimals), font_color);
 }
 
 void EditorPropertyEasing::update_property() {
@@ -1035,6 +1053,11 @@ void EditorPropertyEasing::_spin_value_changed(double p_value) {
 	if (Math::is_zero_approx(p_value)) {
 		p_value = 0.00001;
 	}
+
+	// Limit to a reasonable value to prevent the curve going into infinity,
+	// which can cause crashes and other issues.
+	p_value = CLAMP(p_value, -1'000'000, 1'000'000);
+
 	emit_changed(get_edited_property(), p_value);
 	_spin_focus_exited();
 }
@@ -2108,6 +2131,11 @@ EditorPropertyTransform::EditorPropertyTransform() {
 ////////////// COLOR PICKER //////////////////////
 
 void EditorPropertyColor::_color_changed(const Color &p_color) {
+	// Cancel the color change if the current color is identical to the new one.
+	if (get_edited_object()->get(get_edited_property()) == p_color) {
+		return;
+	}
+
 	emit_changed(get_edited_property(), p_color, "", true);
 }
 
@@ -2207,7 +2235,7 @@ void EditorPropertyNodePath::_node_assign() {
 		add_child(scene_tree);
 		scene_tree->connect("selected", callable_mp(this, &EditorPropertyNodePath::_node_selected));
 	}
-	scene_tree->popup_centered_ratio();
+	scene_tree->popup_scenetree_dialog();
 }
 
 void EditorPropertyNodePath::_node_clear() {
@@ -2343,7 +2371,7 @@ void EditorPropertyResource::_file_selected(const String &p_path) {
 }
 
 void EditorPropertyResource::_menu_option(int p_which) {
-	//	scene_tree->popup_centered_ratio();
+	//scene_tree->popup_scenetree_dialog();
 	switch (p_which) {
 		case OBJ_MENU_LOAD: {
 			if (!file) {
@@ -2369,7 +2397,7 @@ void EditorPropertyResource::_menu_option(int p_which) {
 				file->add_filter("*." + E->get() + " ; " + E->get().to_upper());
 			}
 
-			file->popup_centered_ratio();
+			file->popup_file_dialog();
 		} break;
 
 		case OBJ_MENU_EDIT: {
@@ -2507,7 +2535,7 @@ void EditorPropertyResource::_menu_option(int p_which) {
 					scene_tree->connect("selected", callable_mp(this, &EditorPropertyResource::_viewport_selected));
 					scene_tree->set_title(TTR("Pick a Viewport"));
 				}
-				scene_tree->popup_centered_ratio();
+				scene_tree->popup_scenetree_dialog();
 
 				return;
 			}
@@ -2980,14 +3008,31 @@ Variant EditorPropertyResource::get_drag_data_fw(const Point2 &p_point, Control 
 }
 
 bool EditorPropertyResource::_is_drop_valid(const Dictionary &p_drag_data) const {
-	String allowed_type = base_type;
+	Vector<String> allowed_types = base_type.split(",");
+	int size = allowed_types.size();
+	for (int i = 0; i < size; i++) {
+		String at = allowed_types[i].strip_edges();
+		if (at == "StandardMaterial3D") {
+			allowed_types.append("Texture2D");
+		} else if (at == "ShaderMaterial") {
+			allowed_types.append("Shader");
+		}
+	}
 
 	Dictionary drag_data = p_drag_data;
-	if (drag_data.has("type") && String(drag_data["type"]) == "resource") {
-		Ref<Resource> res = drag_data["resource"];
-		for (int i = 0; i < allowed_type.get_slice_count(","); i++) {
-			String at = allowed_type.get_slice(",", i).strip_edges();
-			if (res.is_valid() && ClassDB::is_parent_class(res->get_class(), at)) {
+
+	Ref<Resource> res;
+	if (drag_data.has("type") && String(drag_data["type"]) == "script_list_element") {
+		ScriptEditorBase *se = Object::cast_to<ScriptEditorBase>(drag_data["script_list_element"]);
+		res = se->get_edited_resource();
+	} else if (drag_data.has("type") && String(drag_data["type"]) == "resource") {
+		res = drag_data["resource"];
+	}
+
+	if (res.is_valid()) {
+		for (int i = 0; i < allowed_types.size(); i++) {
+			String at = allowed_types[i].strip_edges();
+			if (ClassDB::is_parent_class(res->get_class(), at)) {
 				return true;
 			}
 		}
@@ -3001,8 +3046,8 @@ bool EditorPropertyResource::_is_drop_valid(const Dictionary &p_drag_data) const
 			String ftype = EditorFileSystem::get_singleton()->get_file_type(file);
 
 			if (ftype != "") {
-				for (int i = 0; i < allowed_type.get_slice_count(","); i++) {
-					String at = allowed_type.get_slice(",", i).strip_edges();
+				for (int i = 0; i < allowed_types.size(); i++) {
+					String at = allowed_types[i].strip_edges();
 					if (ClassDB::is_parent_class(ftype, at)) {
 						return true;
 					}
@@ -3022,27 +3067,58 @@ void EditorPropertyResource::drop_data_fw(const Point2 &p_point, const Variant &
 	ERR_FAIL_COND(!_is_drop_valid(p_data));
 
 	Dictionary drag_data = p_data;
-	if (drag_data.has("type") && String(drag_data["type"]) == "resource") {
-		Ref<Resource> res = drag_data["resource"];
-		if (res.is_valid()) {
-			emit_changed(get_edited_property(), res);
-			update_property();
-			return;
-		}
+
+	Ref<Resource> res;
+	if (drag_data.has("type") && String(drag_data["type"]) == "script_list_element") {
+		ScriptEditorBase *se = Object::cast_to<ScriptEditorBase>(drag_data["script_list_element"]);
+		res = se->get_edited_resource();
+	} else if (drag_data.has("type") && String(drag_data["type"]) == "resource") {
+		res = drag_data["resource"];
 	}
 
-	if (drag_data.has("type") && String(drag_data["type"]) == "files") {
+	if (!res.is_valid() && drag_data.has("type") && String(drag_data["type"]) == "files") {
 		Vector<String> files = drag_data["files"];
 
 		if (files.size() == 1) {
 			String file = files[0];
-			RES res = ResourceLoader::load(file);
-			if (res.is_valid()) {
-				emit_changed(get_edited_property(), res);
-				update_property();
-				return;
+			res = ResourceLoader::load(file);
+		}
+	}
+
+	if (res.is_valid()) {
+		bool need_convert = true;
+
+		Vector<String> allowed_types = base_type.split(",");
+		for (int i = 0; i < allowed_types.size(); i++) {
+			String at = allowed_types[i].strip_edges();
+			if (ClassDB::is_parent_class(res->get_class(), at)) {
+				need_convert = false;
+				break;
 			}
 		}
+
+		if (need_convert) {
+			for (int i = 0; i < allowed_types.size(); i++) {
+				String at = allowed_types[i].strip_edges();
+				if (at == "StandardMaterial3D" && ClassDB::is_parent_class(res->get_class(), "Texture2D")) {
+					Ref<StandardMaterial3D> mat = memnew(StandardMaterial3D);
+					mat->set_texture(StandardMaterial3D::TextureParam::TEXTURE_ALBEDO, res);
+					res = mat;
+					break;
+				}
+
+				if (at == "ShaderMaterial" && ClassDB::is_parent_class(res->get_class(), "Shader")) {
+					Ref<ShaderMaterial> mat = memnew(ShaderMaterial);
+					mat->set_shader(res);
+					res = mat;
+					break;
+				}
+			}
+		}
+
+		emit_changed(get_edited_property(), res);
+		update_property();
+		return;
 	}
 }
 
@@ -3227,10 +3303,10 @@ bool EditorInspectorDefaultPlugin::parse_property(Object *p_object, Variant::Typ
 				if ((p_hint == PROPERTY_HINT_RANGE || p_hint == PROPERTY_HINT_EXP_RANGE) && p_hint_text.get_slice_count(",") >= 2) {
 					greater = false; //if using ranged, assume false by default
 					lesser = false;
-					min = p_hint_text.get_slice(",", 0).to_double();
-					max = p_hint_text.get_slice(",", 1).to_double();
+					min = p_hint_text.get_slice(",", 0).to_float();
+					max = p_hint_text.get_slice(",", 1).to_float();
 					if (p_hint_text.get_slice_count(",") >= 3) {
-						step = p_hint_text.get_slice(",", 2).to_double();
+						step = p_hint_text.get_slice(",", 2).to_float();
 					}
 					hide_slider = false;
 					exp_range = p_hint == PROPERTY_HINT_EXP_RANGE;
@@ -3330,10 +3406,10 @@ bool EditorInspectorDefaultPlugin::parse_property(Object *p_object, Variant::Typ
 			bool hide_slider = true;
 
 			if (p_hint == PROPERTY_HINT_RANGE && p_hint_text.get_slice_count(",") >= 2) {
-				min = p_hint_text.get_slice(",", 0).to_double();
-				max = p_hint_text.get_slice(",", 1).to_double();
+				min = p_hint_text.get_slice(",", 0).to_float();
+				max = p_hint_text.get_slice(",", 1).to_float();
 				if (p_hint_text.get_slice_count(",") >= 3) {
-					step = p_hint_text.get_slice(",", 2).to_double();
+					step = p_hint_text.get_slice(",", 2).to_float();
 				}
 				hide_slider = false;
 			}
@@ -3348,8 +3424,8 @@ bool EditorInspectorDefaultPlugin::parse_property(Object *p_object, Variant::Typ
 			bool hide_slider = true;
 
 			if (p_hint == PROPERTY_HINT_RANGE && p_hint_text.get_slice_count(",") >= 2) {
-				min = p_hint_text.get_slice(",", 0).to_double();
-				max = p_hint_text.get_slice(",", 1).to_double();
+				min = p_hint_text.get_slice(",", 0).to_float();
+				max = p_hint_text.get_slice(",", 1).to_float();
 				hide_slider = false;
 			}
 
@@ -3363,10 +3439,10 @@ bool EditorInspectorDefaultPlugin::parse_property(Object *p_object, Variant::Typ
 			bool hide_slider = true;
 
 			if (p_hint == PROPERTY_HINT_RANGE && p_hint_text.get_slice_count(",") >= 2) {
-				min = p_hint_text.get_slice(",", 0).to_double();
-				max = p_hint_text.get_slice(",", 1).to_double();
+				min = p_hint_text.get_slice(",", 0).to_float();
+				max = p_hint_text.get_slice(",", 1).to_float();
 				if (p_hint_text.get_slice_count(",") >= 3) {
-					step = p_hint_text.get_slice(",", 2).to_double();
+					step = p_hint_text.get_slice(",", 2).to_float();
 				}
 				hide_slider = false;
 			}
@@ -3380,8 +3456,8 @@ bool EditorInspectorDefaultPlugin::parse_property(Object *p_object, Variant::Typ
 			bool hide_slider = true;
 
 			if (p_hint == PROPERTY_HINT_RANGE && p_hint_text.get_slice_count(",") >= 2) {
-				min = p_hint_text.get_slice(",", 0).to_double();
-				max = p_hint_text.get_slice(",", 1).to_double();
+				min = p_hint_text.get_slice(",", 0).to_float();
+				max = p_hint_text.get_slice(",", 1).to_float();
 				hide_slider = false;
 			}
 
@@ -3394,10 +3470,10 @@ bool EditorInspectorDefaultPlugin::parse_property(Object *p_object, Variant::Typ
 			bool hide_slider = true;
 
 			if (p_hint == PROPERTY_HINT_RANGE && p_hint_text.get_slice_count(",") >= 2) {
-				min = p_hint_text.get_slice(",", 0).to_double();
-				max = p_hint_text.get_slice(",", 1).to_double();
+				min = p_hint_text.get_slice(",", 0).to_float();
+				max = p_hint_text.get_slice(",", 1).to_float();
 				if (p_hint_text.get_slice_count(",") >= 3) {
-					step = p_hint_text.get_slice(",", 2).to_double();
+					step = p_hint_text.get_slice(",", 2).to_float();
 				}
 				hide_slider = false;
 			}
@@ -3412,8 +3488,8 @@ bool EditorInspectorDefaultPlugin::parse_property(Object *p_object, Variant::Typ
 			bool hide_slider = true;
 
 			if (p_hint == PROPERTY_HINT_RANGE && p_hint_text.get_slice_count(",") >= 2) {
-				min = p_hint_text.get_slice(",", 0).to_double();
-				max = p_hint_text.get_slice(",", 1).to_double();
+				min = p_hint_text.get_slice(",", 0).to_float();
+				max = p_hint_text.get_slice(",", 1).to_float();
 
 				hide_slider = false;
 			}
@@ -3428,10 +3504,10 @@ bool EditorInspectorDefaultPlugin::parse_property(Object *p_object, Variant::Typ
 			bool hide_slider = true;
 
 			if (p_hint == PROPERTY_HINT_RANGE && p_hint_text.get_slice_count(",") >= 2) {
-				min = p_hint_text.get_slice(",", 0).to_double();
-				max = p_hint_text.get_slice(",", 1).to_double();
+				min = p_hint_text.get_slice(",", 0).to_float();
+				max = p_hint_text.get_slice(",", 1).to_float();
 				if (p_hint_text.get_slice_count(",") >= 3) {
-					step = p_hint_text.get_slice(",", 2).to_double();
+					step = p_hint_text.get_slice(",", 2).to_float();
 				}
 				hide_slider = false;
 			}
@@ -3446,10 +3522,10 @@ bool EditorInspectorDefaultPlugin::parse_property(Object *p_object, Variant::Typ
 			bool hide_slider = true;
 
 			if (p_hint == PROPERTY_HINT_RANGE && p_hint_text.get_slice_count(",") >= 2) {
-				min = p_hint_text.get_slice(",", 0).to_double();
-				max = p_hint_text.get_slice(",", 1).to_double();
+				min = p_hint_text.get_slice(",", 0).to_float();
+				max = p_hint_text.get_slice(",", 1).to_float();
 				if (p_hint_text.get_slice_count(",") >= 3) {
-					step = p_hint_text.get_slice(",", 2).to_double();
+					step = p_hint_text.get_slice(",", 2).to_float();
 				}
 				hide_slider = false;
 			}
@@ -3463,10 +3539,10 @@ bool EditorInspectorDefaultPlugin::parse_property(Object *p_object, Variant::Typ
 			bool hide_slider = true;
 
 			if (p_hint == PROPERTY_HINT_RANGE && p_hint_text.get_slice_count(",") >= 2) {
-				min = p_hint_text.get_slice(",", 0).to_double();
-				max = p_hint_text.get_slice(",", 1).to_double();
+				min = p_hint_text.get_slice(",", 0).to_float();
+				max = p_hint_text.get_slice(",", 1).to_float();
 				if (p_hint_text.get_slice_count(",") >= 3) {
-					step = p_hint_text.get_slice(",", 2).to_double();
+					step = p_hint_text.get_slice(",", 2).to_float();
 				}
 				hide_slider = false;
 			}
@@ -3480,10 +3556,10 @@ bool EditorInspectorDefaultPlugin::parse_property(Object *p_object, Variant::Typ
 			bool hide_slider = true;
 
 			if (p_hint == PROPERTY_HINT_RANGE && p_hint_text.get_slice_count(",") >= 2) {
-				min = p_hint_text.get_slice(",", 0).to_double();
-				max = p_hint_text.get_slice(",", 1).to_double();
+				min = p_hint_text.get_slice(",", 0).to_float();
+				max = p_hint_text.get_slice(",", 1).to_float();
 				if (p_hint_text.get_slice_count(",") >= 3) {
-					step = p_hint_text.get_slice(",", 2).to_double();
+					step = p_hint_text.get_slice(",", 2).to_float();
 				}
 				hide_slider = false;
 			}
@@ -3497,10 +3573,10 @@ bool EditorInspectorDefaultPlugin::parse_property(Object *p_object, Variant::Typ
 			bool hide_slider = true;
 
 			if (p_hint == PROPERTY_HINT_RANGE && p_hint_text.get_slice_count(",") >= 2) {
-				min = p_hint_text.get_slice(",", 0).to_double();
-				max = p_hint_text.get_slice(",", 1).to_double();
+				min = p_hint_text.get_slice(",", 0).to_float();
+				max = p_hint_text.get_slice(",", 1).to_float();
 				if (p_hint_text.get_slice_count(",") >= 3) {
-					step = p_hint_text.get_slice(",", 2).to_double();
+					step = p_hint_text.get_slice(",", 2).to_float();
 				}
 				hide_slider = false;
 			}
@@ -3514,10 +3590,10 @@ bool EditorInspectorDefaultPlugin::parse_property(Object *p_object, Variant::Typ
 			bool hide_slider = true;
 
 			if (p_hint == PROPERTY_HINT_RANGE && p_hint_text.get_slice_count(",") >= 2) {
-				min = p_hint_text.get_slice(",", 0).to_double();
-				max = p_hint_text.get_slice(",", 1).to_double();
+				min = p_hint_text.get_slice(",", 0).to_float();
+				max = p_hint_text.get_slice(",", 1).to_float();
 				if (p_hint_text.get_slice_count(",") >= 3) {
-					step = p_hint_text.get_slice(",", 2).to_double();
+					step = p_hint_text.get_slice(",", 2).to_float();
 				}
 				hide_slider = false;
 			}

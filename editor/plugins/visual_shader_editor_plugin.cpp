@@ -489,6 +489,45 @@ void VisualShaderEditor::_update_graph() {
 
 	Vector<int> nodes = visual_shader->get_node_list(type);
 
+	VisualShaderNodeUniformRef::clear_uniforms();
+
+	// scan for all uniforms
+
+	for (int t = 0; t < VisualShader::TYPE_MAX; t++) {
+		Vector<int> tnodes = visual_shader->get_node_list((VisualShader::Type)t);
+		for (int i = 0; i < tnodes.size(); i++) {
+			Ref<VisualShaderNode> vsnode = visual_shader->get_node((VisualShader::Type)t, tnodes[i]);
+			Ref<VisualShaderNodeUniform> uniform = vsnode;
+
+			if (uniform.is_valid()) {
+				Ref<VisualShaderNodeFloatUniform> float_uniform = vsnode;
+				Ref<VisualShaderNodeIntUniform> int_uniform = vsnode;
+				Ref<VisualShaderNodeVec3Uniform> vec3_uniform = vsnode;
+				Ref<VisualShaderNodeColorUniform> color_uniform = vsnode;
+				Ref<VisualShaderNodeBooleanUniform> bool_uniform = vsnode;
+				Ref<VisualShaderNodeTransformUniform> transform_uniform = vsnode;
+
+				VisualShaderNodeUniformRef::UniformType uniform_type;
+				if (float_uniform.is_valid()) {
+					uniform_type = VisualShaderNodeUniformRef::UniformType::UNIFORM_TYPE_FLOAT;
+				} else if (int_uniform.is_valid()) {
+					uniform_type = VisualShaderNodeUniformRef::UniformType::UNIFORM_TYPE_INT;
+				} else if (bool_uniform.is_valid()) {
+					uniform_type = VisualShaderNodeUniformRef::UniformType::UNIFORM_TYPE_BOOLEAN;
+				} else if (vec3_uniform.is_valid()) {
+					uniform_type = VisualShaderNodeUniformRef::UniformType::UNIFORM_TYPE_VECTOR;
+				} else if (transform_uniform.is_valid()) {
+					uniform_type = VisualShaderNodeUniformRef::UniformType::UNIFORM_TYPE_TRANSFORM;
+				} else if (color_uniform.is_valid()) {
+					uniform_type = VisualShaderNodeUniformRef::UniformType::UNIFORM_TYPE_COLOR;
+				} else {
+					uniform_type = VisualShaderNodeUniformRef::UniformType::UNIFORM_TYPE_SAMPLER;
+				}
+				VisualShaderNodeUniformRef::add_uniform(uniform->get_uniform_name(), uniform_type);
+			}
+		}
+	}
+
 	Control *offset;
 
 	for (int n_i = 0; n_i < nodes.size(); n_i++) {
@@ -824,6 +863,8 @@ void VisualShaderEditor::_update_graph() {
 
 		if (is_expression) {
 			TextEdit *expression_box = memnew(TextEdit);
+			Ref<CodeHighlighter> expression_syntax_highlighter;
+			expression_syntax_highlighter.instance();
 			expression_node->set_control(expression_box, 0);
 			node->add_child(expression_box);
 
@@ -832,19 +873,25 @@ void VisualShaderEditor::_update_graph() {
 			Color keyword_color = EDITOR_GET("text_editor/highlighting/keyword_color");
 			Color comment_color = EDITOR_GET("text_editor/highlighting/comment_color");
 			Color symbol_color = EDITOR_GET("text_editor/highlighting/symbol_color");
+			Color function_color = EDITOR_GET("text_editor/highlighting/function_color");
+			Color number_color = EDITOR_GET("text_editor/highlighting/number_color");
+			Color members_color = EDITOR_GET("text_editor/highlighting/member_variable_color");
 
-			expression_box->set_syntax_coloring(true);
+			expression_box->set_syntax_highlighter(expression_syntax_highlighter);
 			expression_box->add_theme_color_override("background_color", background_color);
 
 			for (List<String>::Element *E = keyword_list.front(); E; E = E->next()) {
-				expression_box->add_keyword_color(E->get(), keyword_color);
+				expression_syntax_highlighter->add_keyword_color(E->get(), keyword_color);
 			}
 
 			expression_box->add_theme_font_override("font", get_theme_font("expression", "EditorFonts"));
 			expression_box->add_theme_color_override("font_color", text_color);
-			expression_box->add_theme_color_override("symbol_color", symbol_color);
-			expression_box->add_color_region("/*", "*/", comment_color, false);
-			expression_box->add_color_region("//", "", comment_color, false);
+			expression_syntax_highlighter->set_number_color(number_color);
+			expression_syntax_highlighter->set_symbol_color(symbol_color);
+			expression_syntax_highlighter->set_function_color(function_color);
+			expression_syntax_highlighter->set_member_variable_color(members_color);
+			expression_syntax_highlighter->add_color_region("/*", "*/", comment_color, false);
+			expression_syntax_highlighter->add_color_region("//", "", comment_color, true);
 
 			expression_box->set_text(expression);
 			expression_box->set_context_menu_enabled(false);
@@ -1392,6 +1439,12 @@ VisualShaderNode *VisualShaderEditor::_add_node(int p_idx, int p_op_idx) {
 			if (vderFunc) {
 				vderFunc->set_function((VisualShaderNodeVectorDerivativeFunc::Function)p_op_idx);
 			}
+
+			VisualShaderNodeMultiplyAdd *fmaFunc = Object::cast_to<VisualShaderNodeMultiplyAdd>(vsn);
+
+			if (fmaFunc) {
+				fmaFunc->set_type((VisualShaderNodeMultiplyAdd::Type)p_op_idx);
+			}
 		}
 
 		vsnode = Ref<VisualShaderNode>(vsn);
@@ -1693,18 +1746,25 @@ void VisualShaderEditor::_notification(int p_what) {
 			Color keyword_color = EDITOR_GET("text_editor/highlighting/keyword_color");
 			Color comment_color = EDITOR_GET("text_editor/highlighting/comment_color");
 			Color symbol_color = EDITOR_GET("text_editor/highlighting/symbol_color");
+			Color function_color = EDITOR_GET("text_editor/highlighting/function_color");
+			Color number_color = EDITOR_GET("text_editor/highlighting/number_color");
+			Color members_color = EDITOR_GET("text_editor/highlighting/member_variable_color");
 
 			preview_text->add_theme_color_override("background_color", background_color);
 
 			for (List<String>::Element *E = keyword_list.front(); E; E = E->next()) {
-				preview_text->add_keyword_color(E->get(), keyword_color);
+				syntax_highlighter->add_keyword_color(E->get(), keyword_color);
 			}
 
 			preview_text->add_theme_font_override("font", get_theme_font("expression", "EditorFonts"));
 			preview_text->add_theme_color_override("font_color", text_color);
-			preview_text->add_theme_color_override("symbol_color", symbol_color);
-			preview_text->add_color_region("/*", "*/", comment_color, false);
-			preview_text->add_color_region("//", "", comment_color, false);
+			syntax_highlighter->set_number_color(number_color);
+			syntax_highlighter->set_symbol_color(symbol_color);
+			syntax_highlighter->set_function_color(function_color);
+			syntax_highlighter->set_member_variable_color(members_color);
+			syntax_highlighter->clear_color_regions();
+			syntax_highlighter->add_color_region("/*", "*/", comment_color, false);
+			syntax_highlighter->add_color_region("//", "", comment_color, true);
 
 			error_text->add_theme_font_override("font", get_theme_font("status_source", "EditorFonts"));
 			error_text->add_theme_color_override("font_color", get_theme_color("error_color", "Editor"));
@@ -2026,6 +2086,41 @@ void VisualShaderEditor::_input_select_item(Ref<VisualShaderNodeInput> input, St
 	undo_redo->commit_action();
 }
 
+void VisualShaderEditor::_uniform_select_item(Ref<VisualShaderNodeUniformRef> p_uniform_ref, String p_name) {
+	String prev_name = p_uniform_ref->get_uniform_name();
+
+	if (p_name == prev_name) {
+		return;
+	}
+
+	bool type_changed = p_uniform_ref->get_uniform_type_by_name(p_name) != p_uniform_ref->get_uniform_type_by_name(prev_name);
+
+	UndoRedo *undo_redo = EditorNode::get_singleton()->get_undo_redo();
+	undo_redo->create_action(TTR("UniformRef Name Changed"));
+
+	undo_redo->add_do_method(p_uniform_ref.ptr(), "set_uniform_name", p_name);
+	undo_redo->add_undo_method(p_uniform_ref.ptr(), "set_uniform_name", prev_name);
+
+	if (type_changed) {
+		//restore connections if type changed
+		VisualShader::Type type = VisualShader::Type(edit_type->get_selected());
+		int id = visual_shader->find_node_id(type, p_uniform_ref);
+		List<VisualShader::Connection> conns;
+		visual_shader->get_node_connections(type, &conns);
+		for (List<VisualShader::Connection>::Element *E = conns.front(); E; E = E->next()) {
+			if (E->get().from_node == id) {
+				undo_redo->add_do_method(visual_shader.ptr(), "disconnect_nodes", type, E->get().from_node, E->get().from_port, E->get().to_node, E->get().to_port);
+				undo_redo->add_undo_method(visual_shader.ptr(), "connect_nodes", type, E->get().from_node, E->get().from_port, E->get().to_node, E->get().to_port);
+			}
+		}
+	}
+
+	undo_redo->add_do_method(VisualShaderEditor::get_singleton(), "_update_graph");
+	undo_redo->add_undo_method(VisualShaderEditor::get_singleton(), "_update_graph");
+
+	undo_redo->commit_action();
+}
+
 void VisualShaderEditor::_member_filter_changed(const String &p_text) {
 	_update_options_menu();
 }
@@ -2251,6 +2346,7 @@ void VisualShaderEditor::_bind_methods() {
 	ClassDB::bind_method("_add_node", &VisualShaderEditor::_add_node);
 	ClassDB::bind_method("_node_changed", &VisualShaderEditor::_node_changed);
 	ClassDB::bind_method("_input_select_item", &VisualShaderEditor::_input_select_item);
+	ClassDB::bind_method("_uniform_select_item", &VisualShaderEditor::_uniform_select_item);
 	ClassDB::bind_method("_set_node_size", &VisualShaderEditor::_set_node_size);
 	ClassDB::bind_method("_clear_buffer", &VisualShaderEditor::_clear_buffer);
 
@@ -2363,11 +2459,12 @@ VisualShaderEditor::VisualShaderEditor() {
 	preview_vbox->set_visible(preview_showed);
 	main_box->add_child(preview_vbox);
 	preview_text = memnew(TextEdit);
+	syntax_highlighter.instance();
 	preview_vbox->add_child(preview_text);
 	preview_text->set_h_size_flags(SIZE_EXPAND_FILL);
 	preview_text->set_v_size_flags(SIZE_EXPAND_FILL);
 	preview_text->set_custom_minimum_size(Size2(400 * EDSCALE, 0));
-	preview_text->set_syntax_coloring(true);
+	preview_text->set_syntax_highlighter(syntax_highlighter);
 	preview_text->set_show_line_numbers(true);
 	preview_text->set_readonly(true);
 
@@ -2450,6 +2547,7 @@ VisualShaderEditor::VisualShaderEditor() {
 
 	members_dialog = memnew(ConfirmationDialog);
 	members_dialog->set_title(TTR("Create Shader Node"));
+	members_dialog->set_exclusive(false);
 	members_dialog->add_child(members_vb);
 	members_dialog->get_ok()->set_text(TTR("Create"));
 	members_dialog->get_ok()->connect("pressed", callable_mp(this, &VisualShaderEditor::_member_create));
@@ -2710,6 +2808,7 @@ VisualShaderEditor::VisualShaderEditor() {
 	add_options.push_back(AddOption("Max", "Scalar", "Functions", "VisualShaderNodeFloatOp", TTR("Returns the greater of two values."), VisualShaderNodeFloatOp::OP_MAX, VisualShaderNode::PORT_TYPE_SCALAR));
 	add_options.push_back(AddOption("Min", "Scalar", "Functions", "VisualShaderNodeFloatOp", TTR("Returns the lesser of two values."), VisualShaderNodeFloatOp::OP_MIN, VisualShaderNode::PORT_TYPE_SCALAR));
 	add_options.push_back(AddOption("Mix", "Scalar", "Functions", "VisualShaderNodeScalarInterp", TTR("Linear interpolation between two scalars."), -1, VisualShaderNode::PORT_TYPE_SCALAR));
+	add_options.push_back(AddOption("MultiplyAdd", "Scalar", "Functions", "VisualShaderNodeMultiplyAdd", TTR("Performs a fused multiply-add operation (a * b + c) on scalars."), VisualShaderNodeMultiplyAdd::TYPE_SCALAR, VisualShaderNode::PORT_TYPE_SCALAR));
 	add_options.push_back(AddOption("Negate", "Scalar", "Functions", "VisualShaderNodeFloatFunc", TTR("Returns the opposite value of the parameter."), VisualShaderNodeFloatFunc::FUNC_NEGATE, VisualShaderNode::PORT_TYPE_SCALAR));
 	add_options.push_back(AddOption("Negate", "Scalar", "Functions", "VisualShaderNodeIntFunc", TTR("Returns the opposite value of the parameter."), VisualShaderNodeIntFunc::FUNC_NEGATE, VisualShaderNode::PORT_TYPE_SCALAR_INT));
 	add_options.push_back(AddOption("OneMinus", "Scalar", "Functions", "VisualShaderNodeFloatFunc", TTR("1.0 - scalar"), VisualShaderNodeFloatFunc::FUNC_ONEMINUS, VisualShaderNode::PORT_TYPE_SCALAR));
@@ -2812,6 +2911,7 @@ VisualShaderEditor::VisualShaderEditor() {
 	add_options.push_back(AddOption("Min", "Vector", "Functions", "VisualShaderNodeVectorOp", TTR("Returns the lesser of two values."), VisualShaderNodeVectorOp::OP_MIN, VisualShaderNode::PORT_TYPE_VECTOR));
 	add_options.push_back(AddOption("Mix", "Vector", "Functions", "VisualShaderNodeVectorInterp", TTR("Linear interpolation between two vectors."), -1, VisualShaderNode::PORT_TYPE_VECTOR));
 	add_options.push_back(AddOption("MixS", "Vector", "Functions", "VisualShaderNodeVectorScalarMix", TTR("Linear interpolation between two vectors using scalar."), -1, VisualShaderNode::PORT_TYPE_VECTOR));
+	add_options.push_back(AddOption("MultiplyAdd", "Vector", "Functions", "VisualShaderNodeMultiplyAdd", TTR("Performs a fused multiply-add operation (a * b + c) on vectors."), VisualShaderNodeMultiplyAdd::TYPE_VECTOR, VisualShaderNode::PORT_TYPE_VECTOR));
 	add_options.push_back(AddOption("Negate", "Vector", "Functions", "VisualShaderNodeVectorFunc", TTR("Returns the opposite value of the parameter."), VisualShaderNodeVectorFunc::FUNC_NEGATE, VisualShaderNode::PORT_TYPE_VECTOR));
 	add_options.push_back(AddOption("Normalize", "Vector", "Functions", "VisualShaderNodeVectorFunc", TTR("Calculates the normalize product of vector."), VisualShaderNodeVectorFunc::FUNC_NORMALIZE, VisualShaderNode::PORT_TYPE_VECTOR));
 	add_options.push_back(AddOption("OneMinus", "Vector", "Functions", "VisualShaderNodeVectorFunc", TTR("1.0 - vector"), VisualShaderNodeVectorFunc::FUNC_ONEMINUS, VisualShaderNode::PORT_TYPE_VECTOR));
@@ -2849,6 +2949,7 @@ VisualShaderEditor::VisualShaderEditor() {
 	add_options.push_back(AddOption("Expression", "Special", "", "VisualShaderNodeExpression", TTR("Custom Godot Shader Language expression, with custom amount of input and output ports. This is a direct injection of code into the vertex/fragment/light function, do not use it to write the function declarations inside.")));
 	add_options.push_back(AddOption("Fresnel", "Special", "", "VisualShaderNodeFresnel", TTR("Returns falloff based on the dot product of surface normal and view direction of camera (pass associated inputs to it)."), -1, VisualShaderNode::PORT_TYPE_SCALAR));
 	add_options.push_back(AddOption("GlobalExpression", "Special", "", "VisualShaderNodeGlobalExpression", TTR("Custom Godot Shader Language expression, which is placed on top of the resulted shader. You can place various function definitions inside and call it later in the Expressions. You can also declare varyings, uniforms and constants.")));
+	add_options.push_back(AddOption("UniformRef", "Special", "", "VisualShaderNodeUniformRef", TTR("A reference to an existing uniform.")));
 
 	add_options.push_back(AddOption("ScalarDerivativeFunc", "Special", "Common", "VisualShaderNodeScalarDerivativeFunc", TTR("(Fragment/Light mode only) Scalar derivative function."), -1, VisualShaderNode::PORT_TYPE_SCALAR, VisualShader::TYPE_FRAGMENT | VisualShader::TYPE_LIGHT, -1, -1, true));
 	add_options.push_back(AddOption("VectorDerivativeFunc", "Special", "Common", "VisualShaderNodeVectorDerivativeFunc", TTR("(Fragment/Light mode only) Vector derivative function."), -1, VisualShaderNode::PORT_TYPE_VECTOR, VisualShader::TYPE_FRAGMENT | VisualShader::TYPE_LIGHT, -1, -1, true));
@@ -2967,6 +3068,54 @@ public:
 	}
 };
 
+////////////////
+
+class VisualShaderNodePluginUniformRefEditor : public OptionButton {
+	GDCLASS(VisualShaderNodePluginUniformRefEditor, OptionButton);
+
+	Ref<VisualShaderNodeUniformRef> uniform_ref;
+
+public:
+	void _notification(int p_what) {
+		if (p_what == NOTIFICATION_READY) {
+			connect("item_selected", callable_mp(this, &VisualShaderNodePluginUniformRefEditor::_item_selected));
+		}
+	}
+
+	void _item_selected(int p_item) {
+		VisualShaderEditor::get_singleton()->call_deferred("_uniform_select_item", uniform_ref, get_item_text(p_item));
+	}
+
+	void setup(const Ref<VisualShaderNodeUniformRef> &p_uniform_ref) {
+		uniform_ref = p_uniform_ref;
+
+		Ref<Texture2D> type_icon[7] = {
+			EditorNode::get_singleton()->get_gui_base()->get_theme_icon("float", "EditorIcons"),
+			EditorNode::get_singleton()->get_gui_base()->get_theme_icon("int", "EditorIcons"),
+			EditorNode::get_singleton()->get_gui_base()->get_theme_icon("bool", "EditorIcons"),
+			EditorNode::get_singleton()->get_gui_base()->get_theme_icon("Vector3", "EditorIcons"),
+			EditorNode::get_singleton()->get_gui_base()->get_theme_icon("Transform", "EditorIcons"),
+			EditorNode::get_singleton()->get_gui_base()->get_theme_icon("Color", "EditorIcons"),
+			EditorNode::get_singleton()->get_gui_base()->get_theme_icon("ImageTexture", "EditorIcons"),
+		};
+
+		add_item("[None]");
+		int to_select = -1;
+		for (int i = 0; i < p_uniform_ref->get_uniforms_count(); i++) {
+			if (p_uniform_ref->get_uniform_name() == p_uniform_ref->get_uniform_name_by_index(i)) {
+				to_select = i + 1;
+			}
+			add_icon_item(type_icon[p_uniform_ref->get_uniform_type_by_index(i)], p_uniform_ref->get_uniform_name_by_index(i));
+		}
+
+		if (to_select >= 0) {
+			select(to_select);
+		}
+	}
+};
+
+////////////////
+
 class VisualShaderNodePluginDefaultEditor : public VBoxContainer {
 	GDCLASS(VisualShaderNodePluginDefaultEditor, VBoxContainer);
 	Ref<Resource> parent_resource;
@@ -3082,6 +3231,13 @@ public:
 };
 
 Control *VisualShaderNodePluginDefault::create_editor(const Ref<Resource> &p_parent_resource, const Ref<VisualShaderNode> &p_node) {
+	if (p_node->is_class("VisualShaderNodeUniformRef")) {
+		//create input
+		VisualShaderNodePluginUniformRefEditor *uniform_editor = memnew(VisualShaderNodePluginUniformRefEditor);
+		uniform_editor->setup(p_node);
+		return uniform_editor;
+	}
+
 	if (p_node->is_class("VisualShaderNodeInput")) {
 		//create input
 		VisualShaderNodePluginInputEditor *input_editor = memnew(VisualShaderNodePluginInputEditor);

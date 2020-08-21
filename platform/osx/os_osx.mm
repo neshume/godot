@@ -145,7 +145,9 @@ void OS_OSX::finalize() {
 
 	delete_main_loop();
 
-	memdelete(joypad_osx);
+	if (joypad_osx) {
+		memdelete(joypad_osx);
+	}
 }
 
 void OS_OSX::set_main_loop(MainLoop *p_main_loop) {
@@ -272,7 +274,13 @@ String OS_OSX::get_system_dir(SystemDir p_dir) const {
 }
 
 Error OS_OSX::shell_open(String p_uri) {
-	[[NSWorkspace sharedWorkspace] openURL:[[NSURL alloc] initWithString:[[NSString stringWithUTF8String:p_uri.utf8().get_data()] stringByAddingPercentEncodingWithAllowedCharacters:[NSCharacterSet URLFragmentAllowedCharacterSet]]]];
+	NSString *string = [NSString stringWithUTF8String:p_uri.utf8().get_data()];
+	NSURL *uri = [[NSURL alloc] initWithString:string];
+	// Escape special characters in filenames
+	if (!uri || !uri.scheme || [uri.scheme isEqual:@"file"]) {
+		uri = [[NSURL alloc] initWithString:[string stringByAddingPercentEncodingWithAllowedCharacters:[NSCharacterSet URLFragmentAllowedCharacterSet]]];
+	}
+	[[NSWorkspace sharedWorkspace] openURL:uri];
 	return OK;
 }
 
@@ -314,7 +322,7 @@ void OS_OSX::run() {
 			}
 			joypad_osx->process_joypads();
 
-			if (Main::iteration() == true) {
+			if (Main::iteration()) {
 				quit = true;
 			}
 		} @catch (NSException *exception) {

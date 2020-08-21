@@ -4,6 +4,11 @@ import glob
 import subprocess
 from collections import OrderedDict
 
+# We need to define our own `Action` method to control the verbosity of output
+# and whenever we need to run those commands in a subprocess on some platforms.
+from SCons.Script import Action
+from platform_methods import run_in_subprocess
+
 
 def add_source_files(self, sources, files, warn_duplicates=True):
     # Convert string to list of absolute paths (including expanding wildcard)
@@ -92,7 +97,7 @@ def update_version(module_version_string=""):
             gitfolder = module_folder[8:]
 
     if os.path.isfile(os.path.join(gitfolder, "HEAD")):
-        head = open(os.path.join(gitfolder, "HEAD"), "r").readline().strip()
+        head = open(os.path.join(gitfolder, "HEAD"), "r", encoding="utf8").readline().strip()
         if head.startswith("ref: "):
             head = os.path.join(gitfolder, head[5:])
             if os.path.isfile(head):
@@ -217,14 +222,15 @@ void unregister_module_types() {
 def convert_custom_modules_path(path):
     if not path:
         return path
+    path = os.path.realpath(os.path.expanduser(os.path.expandvars(path)))
     err_msg = "Build option 'custom_modules' must %s"
     if not os.path.isdir(path):
         raise ValueError(err_msg % "point to an existing directory.")
-    if os.path.realpath(path) == os.path.realpath("modules"):
+    if path == os.path.realpath("modules"):
         raise ValueError(err_msg % "be a directory other than built-in `modules` directory.")
     if is_module(path):
         raise ValueError(err_msg % "point to a directory with modules, not a single module.")
-    return os.path.realpath(os.path.expanduser(path))
+    return path
 
 
 def disable_module(self):
@@ -548,16 +554,16 @@ def generate_vs_project(env, num_jobs):
         # in a backslash, so we need to remove this, lest it escape the
         # last double quote off, confusing MSBuild
         env["MSVSBUILDCOM"] = build_commandline(
-            "scons --directory=\"$(ProjectDir.TrimEnd('\\'))\" platform=windows progress=no target=$(Configuration) tools=!tools! -j"
-            + str(num_jobs)
+            "scons --directory=\"$(ProjectDir.TrimEnd('\\'))\" platform=windows progress=no target=$(Configuration)"
+            " tools=!tools! -j" + str(num_jobs)
         )
         env["MSVSREBUILDCOM"] = build_commandline(
-            "scons --directory=\"$(ProjectDir.TrimEnd('\\'))\" platform=windows progress=no target=$(Configuration) tools=!tools! vsproj=yes -j"
-            + str(num_jobs)
+            "scons --directory=\"$(ProjectDir.TrimEnd('\\'))\" platform=windows progress=no target=$(Configuration)"
+            " tools=!tools! vsproj=yes -j" + str(num_jobs)
         )
         env["MSVSCLEANCOM"] = build_commandline(
-            "scons --directory=\"$(ProjectDir.TrimEnd('\\'))\" --clean platform=windows progress=no target=$(Configuration) tools=!tools! -j"
-            + str(num_jobs)
+            "scons --directory=\"$(ProjectDir.TrimEnd('\\'))\" --clean platform=windows progress=no"
+            " target=$(Configuration) tools=!tools! -j" + str(num_jobs)
         )
 
         # This version information (Win32, x64, Debug, Release, Release_Debug seems to be
@@ -615,6 +621,14 @@ def CommandNoCache(env, target, sources, command, **args):
     result = env.Command(target, sources, command, **args)
     env.NoCache(result)
     return result
+
+
+def Run(env, function, short_message, subprocess=True):
+    output_print = short_message if not env["verbose"] else ""
+    if not subprocess:
+        return Action(function, output_print)
+    else:
+        return Action(run_in_subprocess(function), output_print)
 
 
 def detect_darwin_sdk_path(platform, env):

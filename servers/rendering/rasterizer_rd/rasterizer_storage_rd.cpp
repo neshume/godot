@@ -899,10 +899,10 @@ Ref<Image> RasterizerStorageRD::texture_3d_slice_get(RID p_texture, int p_depth,
 void RasterizerStorageRD::texture_replace(RID p_texture, RID p_by_texture) {
 	Texture *tex = texture_owner.getornull(p_texture);
 	ERR_FAIL_COND(!tex);
-	ERR_FAIL_COND(tex->proxy_to.is_valid()); //cant replace proxy
+	ERR_FAIL_COND(tex->proxy_to.is_valid()); //can't replace proxy
 	Texture *by_tex = texture_owner.getornull(p_by_texture);
 	ERR_FAIL_COND(!by_tex);
-	ERR_FAIL_COND(by_tex->proxy_to.is_valid()); //cant replace proxy
+	ERR_FAIL_COND(by_tex->proxy_to.is_valid()); //can't replace proxy
 
 	if (tex == by_tex) {
 		return;
@@ -3290,6 +3290,7 @@ RID RasterizerStorageRD::light_create(RS::LightType p_type) {
 	light.param[RS::LIGHT_PARAM_SHADOW_NORMAL_BIAS] = 1.0;
 	light.param[RS::LIGHT_PARAM_SHADOW_PANCAKE_SIZE] = 20.0;
 	light.param[RS::LIGHT_PARAM_TRANSMITTANCE_BIAS] = 0.05;
+	light.param[RS::LIGHT_PARAM_SHADOW_VOLUMETRIC_FOG_FADE] = 1.0;
 
 	return light_owner.make_rid(light);
 }
@@ -5276,7 +5277,7 @@ void RasterizerStorageRD::global_variable_add(const StringName &p_name, RS::Glob
 
 	if (p_type >= RS::GLOBAL_VAR_TYPE_SAMPLER2D) {
 		//is texture
-		global_variables.must_update_texture_materials = true; //normally ther are no
+		global_variables.must_update_texture_materials = true; //normally there are none
 	} else {
 		gv.buffer_elements = 1;
 		if (p_type == RS::GLOBAL_VAR_TYPE_COLOR || p_type == RS::GLOBAL_VAR_TYPE_MAT2) {
@@ -5299,7 +5300,7 @@ void RasterizerStorageRD::global_variable_add(const StringName &p_name, RS::Glob
 		_global_variable_store_in_buffer(gv.buffer_index, gv.type, gv.value);
 		_global_variable_mark_buffer_dirty(gv.buffer_index, gv.buffer_elements);
 
-		global_variables.must_update_buffer_materials = true; //normally ther are no
+		global_variables.must_update_buffer_materials = true; //normally there are none
 	}
 
 	global_variables.variables[p_name] = gv;

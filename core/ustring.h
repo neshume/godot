@@ -202,7 +202,6 @@ public:
 	int find(const String &p_str, int p_from = 0) const; ///< return <0 if failed
 	int find(const char *p_str, int p_from = 0) const; ///< return <0 if failed
 	int find_char(const CharType &p_char, int p_from = 0) const; ///< return <0 if failed
-	int find_last(const String &p_str) const; ///< return <0 if failed
 	int findn(const String &p_str, int p_from = 0) const; ///< return <0 if failed, case insensitive
 	int rfind(const String &p_str, int p_from = -1) const; ///< return <0 if failed
 	int rfindn(const String &p_str, int p_from = -1) const; ///< return <0 if failed, case insensitive
@@ -243,17 +242,14 @@ public:
 	static String md5(const uint8_t *p_md5);
 	static String hex_encode_buffer(const uint8_t *p_buffer, int p_len);
 	bool is_numeric() const;
-	double to_double() const;
-	float to_float() const;
-	int hex_to_int(bool p_with_prefix = true) const;
-	int to_int() const;
+	double to_float() const;
 
-	int64_t hex_to_int64(bool p_with_prefix = true) const;
-	int64_t bin_to_int64(bool p_with_prefix = true) const;
-	int64_t to_int64() const;
-	static int to_int(const char *p_str, int p_len = -1);
-	static double to_double(const char *p_str);
-	static double to_double(const CharType *p_str, const CharType **r_end = nullptr);
+	int64_t hex_to_int(bool p_with_prefix = true) const;
+	int64_t bin_to_int(bool p_with_prefix = true) const;
+	int64_t to_int() const;
+	static int64_t to_int(const char *p_str, int p_len = -1);
+	static double to_float(const char *p_str);
+	static double to_float(const CharType *p_str, const CharType **r_end = nullptr);
 	static int64_t to_int(const CharType *p_str, int p_len = -1, bool p_clamp = false);
 	String capitalize() const;
 	String camelcase_to_underscore(bool lowercase = true) const;

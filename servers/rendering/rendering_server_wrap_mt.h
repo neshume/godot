@@ -468,7 +468,7 @@ public:
 
 	FUNC2(environment_set_ssao_quality, EnvironmentSSAOQuality, bool)
 
-	FUNC12(environment_set_sdfgi, RID, bool, EnvironmentSDFGICascades, float, EnvironmentSDFGIYScale, bool, bool, bool, bool, float, float, float)
+	FUNC11(environment_set_sdfgi, RID, bool, EnvironmentSDFGICascades, float, EnvironmentSDFGIYScale, bool, bool, bool, float, float, float)
 	FUNC1(environment_set_sdfgi_ray_count, EnvironmentSDFGIRayCount)
 	FUNC1(environment_set_sdfgi_frames_to_converge, EnvironmentSDFGIFramesToConverge)
 
@@ -479,9 +479,14 @@ public:
 
 	FUNC6(environment_set_adjustment, RID, bool, float, float, float, RID)
 
-	FUNC5(environment_set_fog, RID, bool, const Color &, const Color &, float)
-	FUNC7(environment_set_fog_depth, RID, bool, float, float, float, bool, float)
-	FUNC5(environment_set_fog_height, RID, bool, float, float, float)
+	FUNC8(environment_set_fog, RID, bool, const Color &, float, float, float, float, float)
+
+	FUNC9(environment_set_volumetric_fog, RID, bool, float, const Color &, float, float, float, float, EnvVolumetricFogShadowFilter)
+
+	FUNC2(environment_set_volumetric_fog_volume_size, int, int)
+	FUNC1(environment_set_volumetric_fog_filter_active, bool)
+	FUNC1(environment_set_volumetric_fog_directional_shadow_shrink_size, int)
+	FUNC1(environment_set_volumetric_fog_positional_shadow_shrink_size, int)
 
 	FUNC3R(Ref<Image>, environment_bake_panorama, RID, bool, const Size2i &)
 
